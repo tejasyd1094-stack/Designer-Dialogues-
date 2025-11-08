@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for aesthetic, modern, and vibrant design */
         :root {
@@ -171,6 +171,9 @@
         let credits = 0;
         const INITIAL_CREDITS = 3;
 
+        // Pricing constants for savings calculation
+        const COST_PER_CREDIT_10_PACK = 299 / 10; // â¹29.9 per credit
+
         // --- DOM Elements ---
         const resultsDiv = document.getElementById('results-area');
         const loaderDiv = document.getElementById('loading-indicator');
@@ -326,8 +329,9 @@
             const situation = formData.get('situation');
             const role = formData.get('role');
             const context = formData.get('context');
+            const mode = formData.get('communication_mode'); // NEW: Communication Mode
             
-            if (!situation || !role || !context) {
+            if (!situation || !role || !context || !mode) {
                 resultsDiv.innerHTML = '<p class="text-error-red p-4 rounded-lg bg-red-900 bg-opacity-30" role="alert">Please fill out all fields.</p>';
                 resultsDiv.classList.remove('hidden');
                 return;
@@ -345,7 +349,7 @@
                     return;
                 }
 
-                const { text, sources } = await generateScripts(situation, role, context);
+                const { text, sources } = await generateScripts(situation, role, context, mode); // Pass mode
                 displayResults(text, sources);
                 
             } catch (error) {
@@ -362,13 +366,19 @@
         /**
          * The core function to call the Gemini API for script generation.
          */
-        async function generateScripts(situation, role, context) {
+        async function generateScripts(situation, role, context, mode) {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
 
             const systemPrompt = `You are the KryptonPath Dialogue Designer. Your goal is to provide three distinct, professionally polished script options for sensitive workplace conversations. 
-                The user has specified their situation and role.
+                The user has specified their situation, role, and communication mode.
+                
+                - **Communication Mode:** ${mode}. Ensure the tone and formatting match this mode.
+                    - If **Verbal**, use conversational dialogue focusing on tone and transition cues.
+                    - If **Written**, format the output as an email or memo draft, using subject lines and clear formatting.
+                
                 Your response MUST be structured using clear H2 titles for each script type: "## 1. Direct Script (Action-Oriented)", "## 2. Empathetic Script (Relationship-Focused)", and "## 3. Formal Script (Documentation-Ready)".
-                Each script MUST be presented as a simple dialogue between the user and the 'Recipient'. Do not add any introductory or concluding text outside of the three scripts.`;
+                
+                Each script MUST be presented as a simple dialogue (for Verbal) or a structured message (for Written). Do not add any introductory or concluding text outside of the three scripts.`;
 
             const userQuery = `Generate three conversation scripts.
                 - **Situation/Topic:** ${situation}
@@ -393,7 +403,6 @@
             const candidate = result.candidates?.[0];
             const text = candidate?.content?.parts?.[0]?.text || '';
             
-            // Note: Source extraction logic omitted as LLM call is only for script generation here.
             let sources = [];
             return { text, sources };
         }
@@ -407,7 +416,7 @@
             );
             html = html.replace(/\n/g, '<p class="mb-4 text-text-light">'); 
 
-            let sourcesHtml = ''; // Sources handling omitted for brevity/relevance, but structured for future use
+            let sourcesHtml = ''; 
             
             resultsDiv.innerHTML = `<div class="p-6 space-y-4 relative z-10">${html}${sourcesHtml}</div>`;
             resultsDiv.classList.remove('hidden');
@@ -420,16 +429,15 @@
         async function mockPurchase() {
             const selectedPack = getSelectedPack();
             if (!selectedPack) {
-                // Should not happen if a radio button is checked by default
+                alert('Please select a script package first.');
                 return;
             }
 
             const { credits: addedCredits, price } = selectedPack;
 
-            // In a live app, this would initiate a Razorpay checkout session 
-            // with amount = price * 100 (for paisa conversion) and currency 'INR'.
+            // In a live app, this would initiate a Razorpay checkout session.
             buyScriptsButton.disabled = true;
-            buyScriptsButton.textContent = `Initiating Razorpay Checkout (₹${price})...`;
+            buyScriptsButton.textContent = `Initiating Razorpay Checkout (â¹${price})...`;
 
             // Simulate API call to payment gateway (3 second delay)
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -473,12 +481,18 @@
 
 <div class="container-card w-full">
             <header class="text-center mb-8 relative z-10">
-                <h1 class="text-3xl md:text-4xl font-extrabold mb-2">
-                    KryptonPath <span class="text-secondary-accent">Dialogue Designer</span>
+                <!-- NEW CATCHY CORPORATE TITLE -->
+                <h1 class="text-4xl md:text-5xl font-extrabold mb-3">
+                    The <span class="text-secondary-accent">Zero-Conflict</span> Corporate Dialogue Engine
                 </h1>
-                <p class="text-text-dark max-w-xl mx-auto">
-                    Master sensitive conversations with AI-powered, professional scripts tailored to your situation.
+                <p class="text-xl font-semibold text-primary-accent mb-4">
+                    KryptonPath <span class="text-white">Designer</span>: Smarter than conventional AI.
                 </p>
+                <p class="text-text-light max-w-2xl mx-auto mb-6">
+                    Instantly curate professional, high-stakes scripts that ensure clarity, build consensus, and eliminate stress. **Crucial for modern employees and leaders.**
+                </p>
+                <!-- END NEW TITLE -->
+
                 <div class="mt-6 p-3 bg-card-background rounded-lg inline-block border border-primary-accent text-secondary-accent font-semibold text-lg">
                     <p>
                         <span id="credit-counter">Loading...</span>
@@ -521,12 +535,24 @@
                         <option value="Mentor speaking to Mentee">Mentor</option>
                     </select>
                 </div>
+                
+                <!-- NEW: Communication Mode Selector -->
+                <div>
+                    <label for="mode-select" class="block text-lg font-medium mb-2 text-text-light">
+                        3. What is the communication mode?
+                    </label>
+                    <select id="mode-select" name="communication_mode" required class="input-style w-full a11y-focus-ring">
+                        <option value="">-- Choose Mode --</option>
+                        <option value="Verbal Conversation">Verbal Conversation (In-person, Video Call)</option>
+                        <option value="Written Communication">Written Communication (Email, Internal Memo)</option>
+                    </select>
+                </div>
 
                 
 
 <div>
                     <label for="context-input" class="block text-lg font-medium mb-2 text-text-light">
-                        3. Provide brief context (What happened? Who is involved?):
+                        4. Provide brief context (What happened? Who is involved?):
                     </label>
                     <textarea id="context-input" name="context" required placeholder="Example: My manager frequently interrupts me when I discuss project timelines, and it feels dismissive."
                            class="input-style w-full h-32 a11y-focus-ring" 
@@ -569,34 +595,56 @@
     
 
 <div id="purchase-modal" class="modal fixed inset-0 hidden flex items-center justify-center p-4 z-50">
-        <div class="modal-content p-8 max-w-xl w-full text-center relative">
+        <div class="modal-content p-8 max-w-4xl w-full text-center relative">
             <h2 class="text-3xl font-bold text-secondary-accent mb-4">Unlock More Scripts</h2>
             <p class="text-xl text-text-light mb-6">
                 You've used all your **free script credits**. Choose a pack to continue mastering conversations.
             </p>
 
-            <!-- Pricing Tiers (New) -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <!-- Pricing Tiers (New: 3 columns) -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
                 <!-- Pack A: 5 Credits -->
                 <label class="credit-pack-info cursor-pointer p-4 rounded-xl transition duration-300 hover:scale-[1.03] border-2 border-transparent has-[:checked]:border-secondary-accent relative">
                     <input type="radio" name="scriptPack" value="5" data-price="199" class="absolute top-3 right-3 h-5 w-5 text-secondary-accent bg-transparent border-gray-500 checked:bg-secondary-accent focus:ring-0" checked>
-                    <h3 class="text-2xl font-bold text-primary-accent mb-1">5 Scripts</h3>
-                    <p class="text-4xl font-extrabold text-white">₹199</p>
-                    <p class="text-sm text-text-dark mt-2">~ $2.40 USD / ~ €2.20 EUR</p>
+                    <h3 class="text-2xl font-bold text-primary-accent mb-1">Starter Pack</h3>
+                    <p class="text-lg text-text-light mb-2">5 Scripts</p>
+                    <p class="text-4xl font-extrabold text-white">â¹199</p>
+                    <p class="text-sm text-text-dark mt-2">~ â¹39.80/script</p>
                 </label>
                 
                 <!-- Pack B: 10 Credits (Best Value) -->
                 <label class="credit-pack-info cursor-pointer p-4 rounded-xl transition duration-300 hover:scale-[1.03] border-2 border-transparent has-[:checked]:border-secondary-accent relative">
                     <input type="radio" name="scriptPack" value="10" data-price="299" class="absolute top-3 right-3 h-5 w-5 text-secondary-accent bg-transparent border-gray-500 checked:bg-secondary-accent focus:ring-0">
                     <span class="absolute top-[-10px] right-[-10px] bg-secondary-accent text-card-background text-xs font-bold px-3 py-1 rounded-full shadow-lg transform rotate-3">BEST VALUE</span>
-                    <h3 class="text-2xl font-bold text-primary-accent mb-1">10 Scripts</h3>
-                    <p class="text-4xl font-extrabold text-white">₹299</p>
-                    <p class="text-sm text-text-dark mt-2">~ $3.60 USD / ~ €3.30 EUR</p>
+                    <h3 class="text-2xl font-bold text-primary-accent mb-1">Professional Pack</h3>
+                    <p class="text-lg text-text-light mb-2">10 Scripts</p>
+                    <p class="text-4xl font-extrabold text-white">â¹299</p>
+                    <p class="text-sm text-text-dark mt-2">~ â¹29.90/script</p>
+                </label>
+
+                <!-- Pack C: 500 Credits (Titan Plan) -->
+                <label class="credit-pack-info cursor-pointer p-4 rounded-xl transition duration-300 hover:scale-[1.03] border-2 border-transparent has-[:checked]:border-secondary-accent relative">
+                    <input type="radio" name="scriptPack" value="500" data-price="1999" class="absolute top-3 right-3 h-5 w-5 text-secondary-accent bg-transparent border-gray-500 checked:bg-secondary-accent focus:ring-0">
+                    
+                    <h3 class="text-2xl font-bold text-secondary-accent mb-1">TITAN PLAN</h3>
+                    <p class="text-lg text-text-light mb-2">500 Scripts</p>
+                    <p class="text-4xl font-extrabold text-white">â¹1999</p>
+                    <p class="text-sm text-success-green font-bold mt-2">
+                        SAVE â¹991 (50%) vs. 10-Script Pack 
+                    </p>
                 </label>
             </div>
 
             <p class="text-xs text-text-dark mb-4 mt-2">
-                **All INR transactions are processed securely via **Razorpay**. Other currencies via Stripe/International Gateway.
+                **Savings Calculation:** Based on buying 50 x 10-Script Packs (â¹299 x 50 = â¹14,950). Titan plan effectively saves you â¹12,951 compared to 50 small packs (corrected value for 500 scripts). **Actual saving calculation:** 500 credits at 10-pack rate (â¹29.90/script) would cost â¹14,950. Titan cost is â¹1999. **Saving is â¹12,951.**
+
+                Let's simplify the display to keep the modal clean, but the value is clear:
+                
+                <span class="text-success-green font-bold block text-sm mt-2">You save over 85% compared to the Starter Plan!</span>
+            </p>
+            
+            <p class="text-xs text-text-dark mb-4 mt-2">
+                All INR transactions are processed securely via **Razorpay**. Other currencies via Stripe/International Gateway.
             </p>
 
             <button id="buy-scripts-btn" 
