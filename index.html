@@ -157,7 +157,8 @@
         // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // IMPORTANT: Importing onSnapshot for real-time credit updates
+        import { getFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Globals ---
         const API_KEY = ""; // Provided by the environment
@@ -169,10 +170,7 @@
         let auth = null;
         let userId = null;
         let credits = 0;
-        const INITIAL_CREDITS = 3;
-
-        // Pricing constants for savings calculation (used for display only)
-        const COST_PER_CREDIT_10_PACK = 299 / 10; 
+        const INITIAL_CREDITS = 3; // Default credits for a new user
 
         // --- DOM Elements ---
         const resultsDiv = document.getElementById('results-area');
@@ -205,14 +203,14 @@
             return null;
         }
 
-
         /**
-         * Initializes Firebase, authenticates the user, and loads credits.
-         * The flow is now linear and awaited to reduce perceived latency.
+         * Initializes Firebase, authenticates the user, and sets up the credit listener.
          */
         async function initializeFirebase() {
             if (!FIREBASE_CONFIG) {
                 console.error("Firebase config is missing. Cannot initialize database.");
+                // Immediately show default credits and enable the button as a fallback
+                updateCreditUI(INITIAL_CREDITS); 
                 return;
             }
             
@@ -222,7 +220,7 @@
             auth = getAuth(app);
             setLogLevel('Debug'); 
             
-            // 2. Initial Authentication (Awaited for speed)
+            // 2. Initial Authentication
             try {
                 if (INITIAL_AUTH_TOKEN) {
                     await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
@@ -230,57 +228,55 @@
                     await signInAnonymously(auth);
                 }
             } catch (error) {
-                // If custom token fails, fall back to anonymous sign-in
-                console.error("Initial sign-in failed. Attempting anonymous fallback:", error);
+                console.error("Authentication failed. Attempting anonymous fallback:", error);
                 await signInAnonymously(auth);
             }
             
-            // 3. Set userId and load credits once authentication is guaranteed
+            // 3. Set userId and IMMEDIATELY enable the UI with initial/placeholder value
             userId = auth.currentUser?.uid || null;
             if (userId) {
                 console.log("Authenticated and ready with UID:", userId);
-                // Await credit load to ensure the UI is updated with the correct count
-                await loadCredits(); 
+                
+                // OPTIMIZATION: Display initial credit count now (3 or whatever the last known was)
+                // This prevents the button from staying disabled while onSnapshot loads
+                updateCreditUI(INITIAL_CREDITS); 
+                
+                // 4. Start listening for real-time credit updates
+                listenForCredits(); 
             } else {
-                updateCreditUI(); 
+                updateCreditUI(0); // If auth fails, show 0 credits
             }
-
-            // 4. Set up a minimalist listener for subsequent auth state changes (robustness)
-            onAuthStateChanged(auth, (user) => {
-                if (user && user.uid !== userId) {
-                    userId = user.uid;
-                    loadCredits();
-                } else if (!user) {
-                    // Handle sign out if ever implemented
-                    userId = null;
-                }
-            });
         }
 
         /**
-         * Loads user credits from Firestore, setting default if new user.
+         * Sets up the onSnapshot listener for real-time credit updates.
          */
-        async function loadCredits() {
+        function listenForCredits() {
             if (!db || !userId) return;
 
-            // Path: /artifacts/{appId}/users/{userId}/usage_credits/dialogue_app
             const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
 
-            try {
-                const docSnap = await getDoc(creditRef);
+            onSnapshot(creditRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     credits = docSnap.data().count || 0;
                 } else {
-                    // New user: grant initial credits
+                    // New user or document deleted: initialize credits
                     credits = INITIAL_CREDITS;
-                    await setDoc(creditRef, { count: credits, userId: userId, lastUpdated: new Date().toISOString() });
+                    try {
+                        await setDoc(creditRef, { count: credits, userId: userId, lastUpdated: new Date().toISOString() });
+                    } catch(e) {
+                        console.error("Could not set initial credits:", e);
+                    }
                 }
-            } catch (e) {
-                console.error("Error loading credits:", e);
-                credits = INITIAL_CREDITS; // Fail-safe
-            }
-            updateCreditUI();
+                // Update UI with the real-time value
+                updateCreditUI(credits);
+            }, (error) => {
+                console.error("Error listening to credits:", error);
+                // Fallback to initial credits if listener fails
+                updateCreditUI(INITIAL_CREDITS);
+            });
         }
+
 
         /**
          * Checks if credits exist, decrements them, and saves to Firestore.
@@ -298,24 +294,30 @@
             try {
                 const newCount = credits - 1;
                 const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
-                // Use setDoc for simplicity, but in a multi-user environment, a transaction would be safer
+                
+                // We trust the onSnapshot listener to update the local 'credits' variable, 
+                // but we perform the decrement operation here.
                 await setDoc(creditRef, { count: newCount, userId: userId, lastUpdated: new Date().toISOString() }, { merge: false });
-                credits = newCount;
-                updateCreditUI();
+                
+                // Do NOT manually decrement local 'credits' or call updateCreditUI here.
+                // onSnapshot will handle the update in real-time when the document changes.
                 return true;
             } catch (e) {
                 console.error("Error decrementing credits:", e);
-                credits--; 
-                updateCreditUI();
+                // If decrement fails, we rely on the current 'credits' state before the attempt
                 return true; 
             }
         }
 
         /**
          * Updates the UI to show the current credit count and button state.
+         * @param {number} currentCredits - The credit count to display.
          */
-        function updateCreditUI() {
+        function updateCreditUI(currentCredits) {
+            credits = currentCredits; // Sync local variable with the latest fetched value
             creditCounter.textContent = `${credits} Script Credits`;
+            
+            // Enable/disable logic
             if (credits <= 0) {
                 submitButton.disabled = true;
                 submitButton.textContent = 'Out of Credits';
@@ -361,12 +363,14 @@
             submitButton.textContent = 'Generating...';
 
             try {
+                // Decrement credit immediately (will update UI via onSnapshot)
                 const isAllowed = await checkAndDecrementCredits();
                 if (!isAllowed) {
                     purchaseModal.classList.remove('hidden');
                     return;
                 }
 
+                // Wait for the generation API call
                 const { text, sources } = await generateScripts(situation, role, context, mode); 
                 displayResults(text, sources);
                 
@@ -375,9 +379,13 @@
                 resultsDiv.innerHTML = '<p class="text-error-red p-4 rounded-lg bg-red-900 bg-opacity-30" role="alert">An error occurred while generating scripts. Please try again. (Check console for details.)</p>';
                 resultsDiv.classList.remove('hidden');
             } finally {
-                // Hide loading state
+                // Hide loading state. The submit button is re-enabled by onSnapshot update.
                 loaderDiv.classList.add('hidden');
-                updateCreditUI(); 
+                // Ensure button is re-enabled if there's an error during generation
+                if (credits > 0) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Generate Scripts (1 Credit)';
+                }
             }
         }
 
@@ -467,14 +475,13 @@
                 const newCount = credits + addedCredits;
                 const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
                 
-                // Save the new credit balance
+                // Save the new credit balance (onSnapshot listener will update UI)
                 await setDoc(creditRef, { 
                     count: newCount, 
                     userId: userId, 
                     lastUpdated: new Date().toISOString(),
                     lastPurchase: { credits: addedCredits, price: price, currency: 'INR' } // Record purchase
                 }, { merge: false });
-                credits = newCount;
                 
                 // Success message
                 alert(`Purchase successful! ${addedCredits} new credits added. You can now generate more scripts.`);
@@ -484,7 +491,7 @@
                 console.error("Error granting credits after mock purchase:", e);
                 alert('Payment simulated, but an error occurred updating your credits. Please contact support.');
             } finally {
-                updateCreditUI();
+                // Reset button state
                 buyScriptsButton.disabled = false;
                 buyScriptsButton.textContent = 'Proceed to Secure Payment';
             }
