@@ -171,8 +171,8 @@
         let credits = 0;
         const INITIAL_CREDITS = 3;
 
-        // Pricing constants for savings calculation
-        const COST_PER_CREDIT_10_PACK = 299 / 10; // â¹29.9 per credit
+        // Pricing constants for savings calculation (used for display only)
+        const COST_PER_CREDIT_10_PACK = 299 / 10; 
 
         // --- DOM Elements ---
         const resultsDiv = document.getElementById('results-area');
@@ -207,35 +207,52 @@
 
 
         /**
-         * Initializes Firebase and authenticates the user.
+         * Initializes Firebase, authenticates the user, and loads credits.
+         * The flow is now linear and awaited to reduce perceived latency.
          */
         async function initializeFirebase() {
             if (!FIREBASE_CONFIG) {
                 console.error("Firebase config is missing. Cannot initialize database.");
                 return;
             }
-
+            
+            // 1. Initialize services
             const app = initializeApp(FIREBASE_CONFIG);
             db = getFirestore(app);
             auth = getAuth(app);
             setLogLevel('Debug'); 
-
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    console.log("Authenticated with UID:", userId);
-                    await loadCredits();
+            
+            // 2. Initial Authentication (Awaited for speed)
+            try {
+                if (INITIAL_AUTH_TOKEN) {
+                    await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
                 } else {
-                    if (INITIAL_AUTH_TOKEN) {
-                        try {
-                            await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
-                        } catch (error) {
-                            console.error("Custom token sign-in failed:", error);
-                            await signInAnonymously(auth);
-                        }
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                // If custom token fails, fall back to anonymous sign-in
+                console.error("Initial sign-in failed. Attempting anonymous fallback:", error);
+                await signInAnonymously(auth);
+            }
+            
+            // 3. Set userId and load credits once authentication is guaranteed
+            userId = auth.currentUser?.uid || null;
+            if (userId) {
+                console.log("Authenticated and ready with UID:", userId);
+                // Await credit load to ensure the UI is updated with the correct count
+                await loadCredits(); 
+            } else {
+                updateCreditUI(); 
+            }
+
+            // 4. Set up a minimalist listener for subsequent auth state changes (robustness)
+            onAuthStateChanged(auth, (user) => {
+                if (user && user.uid !== userId) {
+                    userId = user.uid;
+                    loadCredits();
+                } else if (!user) {
+                    // Handle sign out if ever implemented
+                    userId = null;
                 }
             });
         }
@@ -281,6 +298,7 @@
             try {
                 const newCount = credits - 1;
                 const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
+                // Use setDoc for simplicity, but in a multi-user environment, a transaction would be safer
                 await setDoc(creditRef, { count: newCount, userId: userId, lastUpdated: new Date().toISOString() }, { merge: false });
                 credits = newCount;
                 updateCreditUI();
@@ -329,7 +347,7 @@
             const situation = formData.get('situation');
             const role = formData.get('role');
             const context = formData.get('context');
-            const mode = formData.get('communication_mode'); // NEW: Communication Mode
+            const mode = formData.get('communication_mode'); 
             
             if (!situation || !role || !context || !mode) {
                 resultsDiv.innerHTML = '<p class="text-error-red p-4 rounded-lg bg-red-900 bg-opacity-30" role="alert">Please fill out all fields.</p>';
@@ -349,7 +367,7 @@
                     return;
                 }
 
-                const { text, sources } = await generateScripts(situation, role, context, mode); // Pass mode
+                const { text, sources } = await generateScripts(situation, role, context, mode); 
                 displayResults(text, sources);
                 
             } catch (error) {
@@ -536,7 +554,7 @@
                     </select>
                 </div>
                 
-                <!-- NEW: Communication Mode Selector -->
+                <!-- Communication Mode Selector -->
                 <div>
                     <label for="mode-select" class="block text-lg font-medium mb-2 text-text-light">
                         3. What is the communication mode?
@@ -601,7 +619,7 @@
                 You've used all your **free script credits**. Choose a pack to continue mastering conversations.
             </p>
 
-            <!-- Pricing Tiers (New: 3 columns) -->
+            <!-- Pricing Tiers (3 columns) -->
             <div class="grid grid-cols-3 gap-4 mb-6">
                 <!-- Pack A: 5 Credits -->
                 <label class="credit-pack-info cursor-pointer p-4 rounded-xl transition duration-300 hover:scale-[1.03] border-2 border-transparent has-[:checked]:border-secondary-accent relative">
@@ -630,19 +648,11 @@
                     <p class="text-lg text-text-light mb-2">500 Scripts</p>
                     <p class="text-4xl font-extrabold text-white">â¹1999</p>
                     <p class="text-sm text-success-green font-bold mt-2">
-                        SAVE â¹991 (50%) vs. 10-Script Pack 
+                        SAVE â¹12,951 (85%)
                     </p>
                 </label>
             </div>
 
-            <p class="text-xs text-text-dark mb-4 mt-2">
-                **Savings Calculation:** Based on buying 50 x 10-Script Packs (â¹299 x 50 = â¹14,950). Titan plan effectively saves you â¹12,951 compared to 50 small packs (corrected value for 500 scripts). **Actual saving calculation:** 500 credits at 10-pack rate (â¹29.90/script) would cost â¹14,950. Titan cost is â¹1999. **Saving is â¹12,951.**
-
-                Let's simplify the display to keep the modal clean, but the value is clear:
-                
-                <span class="text-success-green font-bold block text-sm mt-2">You save over 85% compared to the Starter Plan!</span>
-            </p>
-            
             <p class="text-xs text-text-dark mb-4 mt-2">
                 All INR transactions are processed securely via **Razorpay**. Other currencies via Stripe/International Gateway.
             </p>
