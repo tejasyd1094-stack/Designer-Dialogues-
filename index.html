@@ -8,7 +8,7 @@
     <!-- Razorpay Checkout SDK for payment processing -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for aesthetic, modern, and vibrant design */
         :root {
@@ -288,6 +288,24 @@
 
 
     <script type="module">
+        // --- GLOBAL ERROR CATCHER (CRITICAL DEBUG) ---
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("--- GLOBAL JAVASCRIPT ERROR ---");
+            console.error("Message:", message);
+            console.error("Source:", source);
+            console.error("Line/Column:", lineno, colno);
+            if (error) {
+                console.error("Error Object:", error);
+            }
+            // Attempt to show notification if the error is severe enough
+            try {
+                 document.getElementById('notification-toast').textContent = `CRITICAL: Script Error at line ${lineno}. Check console.`;
+                 document.getElementById('notification-toast').className = 'fixed top-5 right-5 p-4 rounded-lg shadow-xl text-white bg-error-red transition-opacity duration-300 transform z-50';
+            } catch (e) { /* ignore if toast fails */ }
+            return true; // Prevents default browser handling
+        };
+        // ---------------------------------------------
+    
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -447,9 +465,17 @@
         async function initFirebase() {
             try {
                 
+                // === DEBUGGING LOGS (CRITICAL) ===
+                console.log("--- Firebase Debug Start ---");
+                console.log("App ID:", appId);
+                console.log("Initial Auth Token Defined:", typeof initialAuthToken !== 'undefined' && initialAuthToken !== null);
+                console.log("Firebase Config Object (Attempting to Use):", firebaseConfig);
+                console.log("--- Firebase Debug End ---");
+                // =================================
+                
                 // Safety check: Ensure the configuration is valid before proceeding
                 if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    throw new Error("Firebase configuration object is invalid or empty.");
+                    throw new Error("Firebase configuration object is invalid or empty. Check Debug Logs above.");
                 }
 
                 app = initializeApp(firebaseConfig);
@@ -479,7 +505,8 @@
                 });
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                showNotification(`Fatal Error: Could not initialize Firebase. Check console.`, 'error');
+                // The main error usually occurs here if initializeApp fails.
+                showNotification(`Fatal Error: Could not initialize Firebase. Check console for details.`, 'error');
             }
         }
 
