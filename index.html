@@ -321,36 +321,24 @@
         // __initial_auth_token is used for secure custom token sign-in.
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
 
-        // 2. Public Firebase Configuration (For External Deployments like Vercel)
-        // This is the configuration provided by the user, which is necessary when 
-        // running outside the secure Canvas environment.
-        const publicFirebaseConfig = {
-            apiKey: "AIzaSyBNxJAj9ioHSPyAYARd7KjWc-jw0I229Lo",
-            authDomain: "zero-conflict.firebaseapp.com",
-            projectId: "zero-conflict",
-            storageBucket: "zero-conflict.firebasestorage.app",
-            messagingSenderId: "818695765041",
-            appId: "1:818695765041:web:f7206907bb3466d9a8e910",
-            measurementId: "G-5SLFLYB88K"
-        };
-        
-        // 3. Determine Final Configuration
-        // Prioritize the secure Canvas environment config, then fall back to the public config.
+        // --- FIREBASE CONFIGURATION (CRITICAL FIX) ---
+        // The previous hardcoded API key was causing a fatal (auth/invalid-api-key) error.
+        // We are now forcing reliance on the secure '__firebase_config' environment variable.
         const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
-            ? JSON.parse(__firebase_config) 
-            : publicFirebaseConfig;
+            ? JSON.parse(__firebase_config)
+            : {}; // If __firebase_config is not available (e.g., external deployment), this will correctly fail initialization.
+        // --- END FIREBASE CONFIGURATION ---
 
-
-        // 4. Razorpay & Currency Configuration
+        // 2. Razorpay & Currency Configuration
         const RAZORPAY_KEY_ID = 'rzp_live_RdjxnHnfeuUS06';
         const CURRENCY_CODE = 'INR'; 
         
-        // 5. Firebase Instances & State
+        // 3. Firebase Instances & State
         let app, db, auth;
         let userId = null;
         let currentCredits = 0;
         
-        // 6. Gemini API Endpoint
+        // 4. Gemini API Endpoint
         const apiKey = "";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
@@ -364,8 +352,8 @@
         const modal = document.getElementById('dialogue-modal');
         const modalContentBox = document.getElementById('modal-content-box');
         const buyScriptsBtn = document.getElementById('buy-scripts-btn');
-        const pricingGrid = document.getElementById('pricing-grid'); 
-        const buyCreditsLink = document.getElementById('buy-credits-link'); 
+        const pricingGrid = document.getElementById('pricing-grid'); // Now defaults to hidden in HTML
+        const buyCreditsLink = document.getElementById('buy-credits-link'); // Reference to the new button
 
         // Set Firebase Logging (Helpful for debugging)
         setLogLevel('debug');
@@ -400,7 +388,7 @@
 
             if (isPurchaseFlow) {
                 // Show pricing grid and purchase button
-                pricingGrid.classList.remove('hidden'); 
+                pricingGrid.classList.remove('hidden'); // CRITICAL: This now reveals the plans
                 buyScriptsBtn.classList.remove('hidden');
                 
                 updateSelectedPack();
@@ -470,17 +458,21 @@
                 
                 // === DEBUGGING LOGS (CRITICAL) ===
                 console.log("--- Firebase Debug Start ---");
-                console.log("App ID (Internal/Public):", appId);
+                console.log("App ID:", appId);
                 console.log("Initial Auth Token Defined:", typeof initialAuthToken !== 'undefined' && initialAuthToken !== null);
-                
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    throw new Error("Missing required Firebase configuration (API Key). Cannot initialize DB/Auth.");
+                // Note: The configuration object is now intentionally checked for content.
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Missing secure Firebase configuration. Cannot initialize DB/Auth.");
                 }
-                console.log("Firebase Config Source:", (typeof __firebase_config !== 'undefined' && __firebase_config) ? "Canvas Secure Variable" : "Hardcoded Public Config");
+                console.log("Firebase Config Object (Attempting to Use):", firebaseConfig);
                 console.log("--- Firebase Debug End ---");
                 // =================================
                 
-                
+                // Safety check: Ensure the configuration is valid before proceeding
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
+                    throw new Error("Firebase configuration object is invalid or empty. Check Debug Logs above.");
+                }
+
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -488,10 +480,10 @@
                 await setPersistence(auth, browserLocalPersistence);
 
                 if (initialAuthToken) {
-                    // This block runs in the Canvas environment (secure sign-in)
+                    // This block will only run in the Canvas environment
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    // This is the path for external deployments (like Vercel) or if token is missing
+                    // This is the path for external deployments like Netlify/Vercel (requires valid config)
                     await signInAnonymously(auth);
                 }
 
@@ -508,8 +500,8 @@
                 });
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                // This should now only trigger if the configuration is fundamentally wrong.
-                showNotification(`Fatal Error: Could not initialize Firebase. Check console for configuration/API Key issues.`, 'error');
+                // This should now only trigger if the environment config is missing or invalid.
+                showNotification(`Fatal Error: Could not initialize Firebase. Please check console for configuration issues.`, 'error');
             }
         }
 
@@ -841,3 +833,4 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
     </script>
 </body>
 </html>
+
