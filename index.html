@@ -8,7 +8,7 @@
     <!-- Razorpay Checkout SDK for payment processing -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for aesthetic, modern, and vibrant design */
         :root {
@@ -126,7 +126,7 @@
             <div id="credit-counter" class="inline-block mt-4 p-2 px-4 rounded-full bg-primary-accent shadow-lg">
                 <span class="text-lg font-bold text-secondary-accent">0 Script Credits</span>
             </div>
-            <!-- NEW BUTTON TO ALWAYS SHOW PURCHASE OPTIONS -->
+            <!-- Button to always show purchase options -->
             <button id="buy-credits-link" class="mt-4 block mx-auto text-sm font-semibold text-white bg-[#374151] hover:bg-[#4b5563] px-6 py-2 rounded-full transition a11y-focus-ring">
                 View Plans & Buy Scripts
             </button>
@@ -297,10 +297,31 @@
 
         // --- CONFIG & INITIALIZATION ---
         
-        // 1. Mandatory Global Variables
+        // 1. Mandatory Global Variables & Fallback
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
+
+        // --- IMPORTANT: EXTERNAL DEPLOYMENT CONFIGURATION ---
+        // This configuration is used when the app is deployed to Netlify, Vercel, or any other host, 
+        // as the Canvas-provided variables are not available there.
+        const FALLBACK_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBNxJAj9ioHSPyAYARd7KjWc-jw0I229Lo",
+            authDomain: "zero-conflict.firebaseapp.com",
+            projectId: "zero-conflict",
+            storageBucket: "zero-conflict.firebasestorage.app",
+            messagingSenderId: "818695765041",
+            appId: "1:818695765041:web:f7206907bb3466d9a8e910",
+            measurementId: "G-5SLFLYB88K"
+        };
+        
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+             // Use Canvas-provided config
+             firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+             // Use hardcoded config for external deployment (Netlify/Vercel)
+             firebaseConfig = FALLBACK_FIREBASE_CONFIG;
+        }
 
         // 2. Razorpay & Currency Configuration
         const RAZORPAY_KEY_ID = 'rzp_live_RdjxnHnfeuUS06';
@@ -326,7 +347,7 @@
         const modalContentBox = document.getElementById('modal-content-box');
         const buyScriptsBtn = document.getElementById('buy-scripts-btn');
         const pricingGrid = document.getElementById('pricing-grid'); // Now defaults to hidden in HTML
-        const buyCreditsLink = document.getElementById('buy-credits-link'); // NEW: Reference to the new button
+        const buyCreditsLink = document.getElementById('buy-credits-link'); // Reference to the new button
 
         // Set Firebase Logging (Helpful for debugging)
         setLogLevel('debug');
@@ -428,6 +449,10 @@
 
         async function initFirebase() {
             try {
+                
+                // IMPORTANT: Removed the placeholder check as we now have the user's config
+                // and use a reliable fallback.
+                
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -435,15 +460,18 @@
                 await setPersistence(auth, browserLocalPersistence);
 
                 if (initialAuthToken) {
+                    // This block will only run in the Canvas environment
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
+                    // This is the path for external deployments like Netlify/Vercel
                     await signInAnonymously(auth);
                 }
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        setupCreditListener(userId);
+                        // Use the default-app-id for external deployments
+                        setupCreditListener(userId); 
                     } else {
                         userId = null;
                         updateCreditUI(0);
@@ -457,6 +485,7 @@
         }
 
         function setupCreditListener(uid) {
+            // Note: External deployments use 'default-app-id' in the path
             const creditDocRef = doc(db, 'artifacts', appId, 'users', uid, 'usage_credits', 'dialogue_app');
             
             onSnapshot(creditDocRef, (docSnap) => {
@@ -554,7 +583,7 @@
         
         function handleBuyScripts() {
             if (!db || !userId) {
-                showMessageBox("System Error", "App not fully initialized. Please wait a moment and try again.", false);
+                showMessageBox("System Error", "App not fully initialized. Please wait a moment and try again. (Firebase configuration error)", false);
                 return;
             }
 
