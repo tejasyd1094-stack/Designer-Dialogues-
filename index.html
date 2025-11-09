@@ -8,7 +8,7 @@
     <!-- Razorpay Checkout SDK for payment processing -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for aesthetic, modern, and vibrant design */
         :root {
@@ -301,9 +301,8 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
 
-        // --- IMPORTANT: EXTERNAL DEPLOYMENT CONFIGURATION ---
-        // This configuration is used when the app is deployed to Netlify, Vercel, or any other host, 
-        // as the Canvas-provided variables are not available there.
+        // --- REVISED CRITICAL CONFIGURATION BLOCK ---
+        // This is the guaranteed configuration for external deployments (Netlify/Vercel)
         const FALLBACK_FIREBASE_CONFIG = {
             apiKey: "AIzaSyBNxJAj9ioHSPyAYARd7KjWc-jw0I229Lo",
             authDomain: "zero-conflict.firebaseapp.com",
@@ -314,14 +313,12 @@
             measurementId: "G-5SLFLYB88K"
         };
         
-        let firebaseConfig;
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-             // Use Canvas-provided config
-             firebaseConfig = JSON.parse(__firebase_config);
-        } else {
-             // Use hardcoded config for external deployment (Netlify/Vercel)
-             firebaseConfig = FALLBACK_FIREBASE_CONFIG;
-        }
+        // Determine the final configuration object using a guaranteed assignment.
+        // It uses the Canvas config if available, otherwise it uses the user-provided fallback.
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
+            ? JSON.parse(__firebase_config)
+            : FALLBACK_FIREBASE_CONFIG;
+        // --- END REVISED BLOCK ---
 
         // 2. Razorpay & Currency Configuration
         const RAZORPAY_KEY_ID = 'rzp_live_RdjxnHnfeuUS06';
@@ -450,9 +447,11 @@
         async function initFirebase() {
             try {
                 
-                // IMPORTANT: Removed the placeholder check as we now have the user's config
-                // and use a reliable fallback.
-                
+                // Safety check: Ensure the configuration is valid before proceeding
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
+                    throw new Error("Firebase configuration object is invalid or empty.");
+                }
+
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
