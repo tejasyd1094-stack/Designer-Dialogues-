@@ -279,7 +279,7 @@
                     class="w-full p-3 text-sm text-text-dark hover:text-white transition a11y-focus-ring">
                 Go back to designer
             </button>
-            <p class="text-xs text-text-dark mt-4 text-center">Powered by <a href="#" class="text-primary-accent hover:underline">Gemini</a> & <a href="#" class="text-primary-accent hover:underline">Firebase</a></p>
+            <p class="text-xs text-text-dark mt-4">Powered by <a href="#" class="text-primary-accent hover:underline">Gemini</a> & <a href="#" class="text-primary-accent hover:underline">Firebase</a></p>
         </div>
     </div>
     
@@ -315,28 +315,19 @@
 
         // --- CONFIG & INITIALIZATION ---
         
-        // 1. Mandatory Global Variables & Fallback
+        // 1. Mandatory Global Variables
+        // __app_id is used in the Firestore path construction.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // __initial_auth_token is used for secure custom token sign-in.
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
 
-        // --- REVISED CRITICAL CONFIGURATION BLOCK ---
-        // This is the guaranteed configuration for external deployments (Netlify/Vercel)
-        const FALLBACK_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBNxJAj9ioHSPyAYARd7KjWc-jw0I229Lo",
-            authDomain: "zero-conflict.firebaseapp.com",
-            projectId: "zero-conflict",
-            storageBucket: "zero-conflict.firebasestorage.app",
-            messagingSenderId: "818695765041",
-            appId: "1:818695765041:web:f7206907bb3466d9a8e910",
-            measurementId: "G-5SLFLYB88K"
-        };
-        
-        // Determine the final configuration object using a guaranteed assignment.
-        // It uses the Canvas config if available, otherwise it uses the user-provided fallback.
+        // --- FIREBASE CONFIGURATION (CRITICAL FIX) ---
+        // The previous hardcoded API key was causing a fatal (auth/invalid-api-key) error.
+        // We are now forcing reliance on the secure '__firebase_config' environment variable.
         const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
             ? JSON.parse(__firebase_config)
-            : FALLBACK_FIREBASE_CONFIG;
-        // --- END REVISED BLOCK ---
+            : {}; // If __firebase_config is not available (e.g., external deployment), this will correctly fail initialization.
+        // --- END FIREBASE CONFIGURATION ---
 
         // 2. Razorpay & Currency Configuration
         const RAZORPAY_KEY_ID = 'rzp_live_RdjxnHnfeuUS06';
@@ -469,6 +460,10 @@
                 console.log("--- Firebase Debug Start ---");
                 console.log("App ID:", appId);
                 console.log("Initial Auth Token Defined:", typeof initialAuthToken !== 'undefined' && initialAuthToken !== null);
+                // Note: The configuration object is now intentionally checked for content.
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Missing secure Firebase configuration. Cannot initialize DB/Auth.");
+                }
                 console.log("Firebase Config Object (Attempting to Use):", firebaseConfig);
                 console.log("--- Firebase Debug End ---");
                 // =================================
@@ -488,7 +483,7 @@
                     // This block will only run in the Canvas environment
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    // This is the path for external deployments like Netlify/Vercel
+                    // This is the path for external deployments like Netlify/Vercel (requires valid config)
                     await signInAnonymously(auth);
                 }
 
@@ -505,8 +500,8 @@
                 });
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                // The main error usually occurs here if initializeApp fails.
-                showNotification(`Fatal Error: Could not initialize Firebase. Check console for details.`, 'error');
+                // This should now only trigger if the environment config is missing or invalid.
+                showNotification(`Fatal Error: Could not initialize Firebase. Please check console for configuration issues.`, 'error');
             }
         }
 
