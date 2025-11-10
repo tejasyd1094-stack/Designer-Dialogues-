@@ -213,39 +213,40 @@
             <h2 id="modal-title" class="text-3xl font-extrabold text-secondary-accent mb-4 text-center">Unlock Scripts</h2>
             <p id="modal-message" class="text-text-light mb-6 text-center">
                 Select a script pack below, then **contact the author/support** for a personalized payment link.
+                <!-- This message will be updated by JS to include currency (USD or INR) -->
             </p>
 
             <!-- Pricing Grid -->
             <div id="pricing-grid" class="grid grid-cols-3 gap-3 mb-6">
                 
-                <!-- 10 Credits @ â¹199 (Starter Pack) -->
-                <label for="starter-pack" id="starter-card" class="pack-card bg-background-dark p-3 rounded-lg text-center relative hover:border-primary-accent selected">
-                    <input type="radio" id="starter-pack" name="scriptPack" value="10" data-price-inr="199" checked
+                <!-- 10 Scripts (BASIC) -->
+                <label for="basic-pack" id="basic-card" class="pack-card bg-background-dark p-3 rounded-lg text-center relative hover:border-primary-accent selected">
+                    <input type="radio" id="basic-pack" name="scriptPack" data-pack-name="BASIC" value="10" checked
                            class="absolute top-2 right-2 h-4 w-4 text-primary-accent bg-transparent border-gray-500 checked:bg-primary-accent focus:ring-0">
                     
                     <h3 class="text-md font-bold text-primary-accent mb-1">BASIC</h3>
                     <p class="text-sm text-text-light mb-1">10 Scripts</p>
-                    <p class="text-xl font-extrabold text-white">â¹199</p>
+                    <p class="text-xl font-extrabold text-white pack-price-display">--</p>
                 </label>
 
-                <!-- 50 Credits @ â¹399 (Pro Pack) -->
+                <!-- 50 Scripts (PRO) -->
                 <label for="pro-pack" id="pro-card" class="pack-card bg-background-dark p-3 rounded-lg text-center relative hover:border-primary-accent">
-                    <input type="radio" id="pro-pack" name="scriptPack" value="50" data-price-inr="399"
+                    <input type="radio" id="pro-pack" name="scriptPack" data-pack-name="PRO" value="50"
                            class="absolute top-2 right-2 h-4 w-4 text-primary-accent bg-transparent border-gray-500 checked:bg-primary-accent focus:ring-0">
                     
                     <h3 class="text-md font-bold text-primary-accent mb-1">PRO</h3>
                     <p class="text-sm text-text-light mb-1">50 Scripts</p>
-                    <p class="text-xl font-extrabold text-white">â¹399</p>
+                    <p class="text-xl font-extrabold text-white pack-price-display">--</p>
                 </label>
 
-                <!-- 100 Credits @ â¹799 (Max Plan - Best Value) -->
+                <!-- 100 Scripts (MAX) -->
                 <label for="max-pack" id="max-card" class="pack-card bg-background-dark p-3 rounded-lg text-center relative border-2 border-secondary-accent shadow-lg">
-                    <input type="radio" id="max-pack" name="scriptPack" value="100" data-price-inr="799"
+                    <input type="radio" id="max-pack" name="scriptPack" data-pack-name="MAX" value="100"
                            class="absolute top-2 right-2 h-4 w-4 text-secondary-accent bg-transparent border-gray-500 checked:bg-secondary-accent focus:ring-0">
                     
                     <h3 class="text-md font-bold text-secondary-accent mb-1">MAX</h3>
                     <p class="text-sm text-text-light mb-1">100 Scripts</p>
-                    <p class="text-xl font-extrabold text-white">â¹799</p>
+                    <p class="text-xl font-extrabold text-white pack-price-display">--</p>
                 </label>
             </div>
 
@@ -253,7 +254,7 @@
             <div id="contact-instructions" class="bg-primary-accent/10 p-4 rounded-lg border border-primary-accent/50 mb-6">
                 <p class="text-lg font-semibold text-primary-accent mb-2">Next Step: Get Your Payment Link</p>
                 <p class="text-text-light text-sm">
-                    Thank you for choosing the **<span id="selected-pack-name" class="font-bold">BASIC</span>** pack (â¹<span id="selected-pack-price">199</span>).
+                    Thank you for choosing the **<span id="selected-pack-name" class="font-bold">BASIC</span>** pack (<span id="selected-pack-currency-code">INR</span> <span id="selected-pack-price">199</span>).
                     To complete your purchase, please **email us at <a href="mailto:services@kryptonpath.com" class="font-bold underline text-white hover:text-secondary-accent transition">services@kryptonpath.com</a>** or send a direct message on **Instagram at <a href="https://www.instagram.com/kryptonpath?igsh=MTdtem9jMXd5amluNw%3D%3D&utm_source=qr" target="_blank" class="font-bold underline text-white hover:text-secondary-accent transition">@kryptonpath</a>**. 
                     We will respond promptly with a direct, secure payment link.
                 </p>
@@ -279,10 +280,23 @@
         // --- CONFIGURATION ---
         
         // SECURITY RISK WARNING: The API key is exposed in client-side code.
-        // This is only for a non-state demo as requested.
         const apiKey = ""; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const INSTAGRAM_URL = "https://www.instagram.com/kryptonpath?igsh=MTdtem9jMXd5amluNw%3D%3D&utm_source=qr";
+
+        // Price Tiers (INR and USD equivalents)
+        const PRICING_TIERS = {
+            'BASIC': { inr: 199, usd: 2.99 },
+            'PRO': { inr: 399, usd: 4.99 },
+            'MAX': { inr: 799, usd: 9.99 }
+        };
+
+        // State for dynamic currency
+        let currentCurrency = {
+            code: 'INR', // Default to INR
+            symbol: 'â¹',
+            priceKey: 'inr'
+        };
 
         // Initial state (Mock credits for a free demo run)
         let mockCredits = 3;
@@ -301,7 +315,46 @@
         
         const selectedPackName = document.getElementById('selected-pack-name');
         const selectedPackPrice = document.getElementById('selected-pack-price');
+        const selectedPackCurrencyCode = document.getElementById('selected-pack-currency-code');
 
+
+        // --- DYNAMIC CURRENCY LOGIC ---
+
+        function determineCurrencyAndPrices() {
+            try {
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                // Check if the user is likely in India (Asia/Kolkata or Asia/Calcutta)
+                if (timezone.includes('Asia/Kolkata') || timezone.includes('Asia/Calcutta')) {
+                    currentCurrency = { code: 'INR', symbol: 'â¹', priceKey: 'inr' };
+                    document.getElementById('modal-message').innerHTML = 'Select a script pack below, then **contact the author/support** for a personalized payment link (Prices in **INR**).';
+                } else {
+                    currentCurrency = { code: 'USD', symbol: '$', priceKey: 'usd' };
+                    document.getElementById('modal-message').innerHTML = 'Select a script pack below, then **contact the author/support** for a personalized payment link (Prices in **USD**).';
+                }
+            } catch (e) {
+                // Fallback if Intl is unavailable (shouldn't happen in modern browsers)
+                console.warn("Could not determine timezone, defaulting to INR.");
+                currentCurrency = { code: 'INR', symbol: 'â¹', priceKey: 'inr' };
+                document.getElementById('modal-message').innerHTML = 'Select a script pack below, then **contact the author/support** for a personalized payment link (Prices in **INR**).';
+            }
+
+
+            // Update all card prices based on determined currency
+            document.querySelectorAll('input[name="scriptPack"]').forEach(input => {
+                const packName = input.dataset.packName;
+                const price = PRICING_TIERS[packName][currentCurrency.priceKey];
+                
+                // Find the associated price display element
+                const card = input.closest('.pack-card');
+                const priceDisplay = card.querySelector('.pack-price-display');
+                
+                // Display price without currency symbol, but use symbol for reference in JS state
+                priceDisplay.textContent = price;
+            });
+            
+            // Ensure the initial selection is reflected in the message box
+            updateSelectedPack(); 
+        }
 
         // --- UI & UX FUNCTIONS ---
 
@@ -327,7 +380,7 @@
 
         function showMessageBox(title, message, isPurchaseFlow = false) {
             document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').innerHTML = message;
+            // The main modal message is set by determineCurrencyAndPrices
             
             if (isPurchaseFlow) {
                 // Show contact instructions
@@ -382,11 +435,12 @@
             
             if (!selectedInput) return;
 
-            const name = selectedInput.id.split('-')[0].toUpperCase();
-            const price = selectedInput.dataset.priceInr;
+            const name = selectedInput.dataset.packName;
+            const price = PRICING_TIERS[name][currentCurrency.priceKey];
             
             selectedPackName.textContent = name;
             selectedPackPrice.textContent = price;
+            selectedPackCurrencyCode.textContent = currentCurrency.code;
 
             packs.forEach(card => {
                 const input = card.querySelector('input[name="scriptPack"]');
@@ -403,15 +457,16 @@
         function handleBuyScripts() {
              // 1. Get selected pack details
             const selectedInput = document.querySelector('input[name="scriptPack"]:checked');
-            const name = selectedInput.id.split('-')[0].toUpperCase();
-            const price = selectedInput.dataset.priceInr;
+            const name = selectedInput.dataset.packName;
+            const price = PRICING_TIERS[name][currentCurrency.priceKey];
+            const currencyCode = currentCurrency.code;
             
             // 2. Hide the purchase modal
             closeModal();
             
             // 3. Show a professional confirmation toast
             showNotification(
-                `Requested ${name} pack (â¹${price}). Redirecting you to Instagram to contact support!`, 
+                `Requested ${name} pack (${price} ${currencyCode}). Redirecting you to Instagram to contact support!`, 
                 'success'
             );
             
@@ -560,8 +615,13 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
              // Initialize UI state
             updateCreditUI(3); 
             
-            // Set default selection and update modal text
-            document.getElementById('starter-pack').checked = true;
+            // 1. Determine local currency and update all prices
+            determineCurrencyAndPrices(); 
+
+            // 2. Set default selection
+            document.getElementById('basic-pack').checked = true;
+            
+            // 3. Update the modal message box based on the default selection
             updateSelectedPack(); 
         };
 
