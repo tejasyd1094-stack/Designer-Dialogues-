@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KryptonPath Dialogue Designer - Prototype</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for aesthetic, modern, and vibrant design */
         :root {
@@ -17,6 +17,7 @@
             --text-dark: #AAAAAA; /* Lighter grey for secondary text */
             --success-green: #3DDC84; /* Vibrant Green for success */
             --error-red: #FF6B6B; /* Soft Red for errors */
+            --warning-orange: #FF8C00; /* For fallback state */
         }
 
         body {
@@ -104,6 +105,11 @@
         }
         .buy-button:hover {
             background-color: #2da468;
+        }
+        .fallback-message {
+            background-color: var(--warning-orange);
+            color: #1A1A2E;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -198,6 +204,11 @@
 
         <!-- Results Area -->
         <section id="results-area" class="hidden mt-8 rounded-xl bg-background-dark p-6 shadow-2xl" aria-live="polite" aria-atomic="true">
+             <div id="fallback-alert" class="hidden p-4 rounded-lg mb-6 fallback-message">
+                <p class="text-sm">
+                    <strong>â ï¸ Fallback Scripts Used:</strong> The AI generation service is currently experiencing high load (API limit reached). We provided high-quality, pre-written examples based on your topic. Try again later for truly personalized scripts.
+                </p>
+            </div>
             <h3 class="text-2xl font-bold text-secondary-accent mb-4">Your Conflict-Free Scripts</h3>
             <div id="script-results" class="space-y-6">
                 <!-- Content will be injected here -->
@@ -307,6 +318,7 @@
         const loadingIndicator = document.getElementById('loading-indicator');
         const resultsArea = document.getElementById('results-area');
         const scriptResultsDiv = document.getElementById('script-results');
+        const fallbackAlert = document.getElementById('fallback-alert');
         const creditCounterSpan = document.querySelector('#credit-counter span');
         const modal = document.getElementById('dialogue-modal');
         const modalContentBox = document.getElementById('modal-content-box');
@@ -316,6 +328,27 @@
         const selectedPackName = document.getElementById('selected-pack-name');
         const selectedPackPrice = document.getElementById('selected-pack-price');
         const selectedPackCurrencyCode = document.getElementById('selected-pack-currency-code');
+
+        // --- FALLBACK SCRIPT DATA ---
+        const FALLBACK_SCRIPTS = {
+            // Default scripts for when the specific situation is unknown or API fails
+            default: "## Direct Script (Action-Oriented)\n[Your Name]: \"[Colleague Name], I need to talk about the project status. I've noticed you've missed the last two internal deadlines, which is impacting the next phase. What's currently blocking you from hitting the agreed-upon targets? We need a clear, realistic plan for the next 48 hours.\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"[Colleague Name], I know you've been managing a lot lately. I want to check in on the project. When team deliverables slip, it affects all of us. Can we look at your current workload together right now? My goal is to support you and ensure we hit the final milestone as a team.\"\n\n## Formal Script (Documentation-Ready)\nSubject: Urgent: Project [X] Deliverable Status Review\n\n[Your Name]: \"Hi [Colleague Name], As of [Date], the deliverable for Phase B is overdue. This critical path item is now delaying the start of Phase C. Please provide an immediate update on the reason for the delay and a firm, confirmed timeline for completion by end-of-day [Today's Date]. I need assurance that we can meet our external commitments.\"",
+            
+            // Scripts for: Handling unjustified criticism from a senior leader.
+            "Handling unjustified criticism from a senior leader.": "## Direct Script (Action-Oriented)\n[Your Name]: \"Thank you for that feedback, [Leader's Name]. To ensure I understand, could you specify which data point or deliverable led to that conclusion? I'd like to reference the initial project brief so we can be sure we're aligned on the scope.\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"I appreciate you raising this, [Leader's Name]. It sounds like there's a disconnect between what I'm delivering and what you expect from this role. Before we delve into next steps, could you walk me through your key priorities for this quarter so I can recalibrate my focus?\"\n\n## Formal Script (Documentation-Ready)\n[Your Name]: \"[Leader's Name], I acknowledge your comment about [Specific Criticism]. I will document this conversation and follow up with an email outlining the metrics and results delivered to date, along with my understanding of your suggested pivot. I want to ensure we have a clear, agreed-upon record for the project file.\"",
+
+            // Scripts for: Addressing a colleague who consistently misses deadlines.
+            "Addressing a colleague who consistently misses deadlines.": "## Direct Script (Action-Oriented)\n[Your Name]: \"[Colleague Name], the deadline for the Q3 report was yesterday. Missing these internal checkpoints is now impacting my ability to finalize the presentation. What is the guaranteed, non-negotiable time you will have this to me today? I need a clear commitment.\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"I know you're juggling a lot, [Colleague Name], but I'm getting worried about our shared timeline. When you miss your deadline, my whole schedule slides. Is there anything on your plate I can take over, or something I can do to help you prioritize this so we can move forward together?\"\n\n## Formal Script (Documentation-Ready)\n[Your Name]: \"Hi [Colleague Name], Following up on the deliverable due [Date]. This is now [X] days past due. Per our Project Charter, this item is critical. Please respond to this message immediately with your updated completion time and provide a brief explanation for the delay, so I can update the project manager.\"",
+            
+            // Scripts for: Negotiating a better salary/compensation package.
+            "Negotiating a better salary/compensation package.": "## Direct Script (Action-Oriented)\n[Your Name]: \"Based on my contributionsâspecifically generating [X] revenue and taking on the [Y] responsibilityâand market data that places my current role salary range at [Higher Range], I am formally requesting a salary adjustment to [Target Amount]. I believe this accurately reflects the value I bring to the team.\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"I'm committed to [Company Name] and excited about my future here. As I've grown, I've taken on [List new responsibilities]. Could we discuss my compensation? I want to make sure my salary is competitive and reflects my increased value and dedication to the team's success.\"\n\n## Formal Script (Documentation-Ready)\n[Your Name]: \"[Manager's Name], I request a formal review of my current total compensation package. In the last year, I have consistently exceeded expectations in [Key Area 1] and successfully led [Project Name]. I have attached a document detailing my achievements and market research to support a compensation adjustment.\"",
+
+            // Scripts for: Giving difficult performance feedback to a direct report.
+            "Giving difficult performance feedback to a direct report.": "## Direct Script (Action-Oriented)\n[Your Name]: \"[Report's Name], we need to talk about your task completion rate. Last week, three critical assignments were delivered late, which has created rework for the team. My expectation is that all assigned tasks are completed on time, or you communicate a delay 24 hours in advance. Can you commit to that standard moving forward?\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"I care about your success here, [Report's Name], and I've noticed a pattern lately where [Specific Behavior, e.g., you seem disengaged in meetings]. Let's discuss what's going on and what support you need from me. We need to get you back on track to meet your goals.\"\n\n## Formal Script (Documentation-Ready)\n[Your Name]: \"[Report's Name], this meeting is to formally document performance concerns related to punctuality and adherence to operational standards, specifically regarding [Incident Date]. We will implement a 30-day performance improvement plan, with mandatory weekly check-ins to monitor progress against agreed-upon metrics.\"",
+            
+            // Scripts for: Pushing back against an overwhelming new project assignment.
+            "Pushing back against an overwhelming new project assignment.": "## Direct Script (Action-Oriented)\n[Your Name]: \"I see the value of this new project, but based on my current loadâProject X (40 hours) and Project Y (30 hours)âI cannot take on Z without compromising quality on the other two. Which of the three projects should I de-prioritize to dedicate the necessary time to Z?\"\n\n## Empathetic Script (Relationship-Focused)\n[Your Name]: \"I'm excited about the opportunity with Project Z. I know it's important. However, I want to deliver quality work. Before I start, can we review my existing schedule to find a realistic resource allocation? I want to partner with you to make sure we're setting up all projects for success.\"\n\n## Formal Script (Documentation-Ready)\n[Your Name]: \"[Manager's Name], I am submitting a formal resource reallocation request concerning Project Z. My current capacity is fully allocated to Projects X and Y until [Date]. I recommend either deferring Project Z until then, or assigning Project X to [Colleague Name] to ensure Project Z can receive the dedicated attention required.\""
+        };
 
 
         // --- DYNAMIC CURRENCY LOGIC ---
@@ -504,6 +537,7 @@
             submitBtn.textContent = 'Generating...';
             loadingIndicator.classList.remove('hidden');
             resultsArea.classList.add('hidden');
+            fallbackAlert.classList.add('hidden'); // Hide fallback alert initially
             
             const formData = new FormData(form);
             const situation = formData.get('situation');
@@ -521,8 +555,11 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
 
             const userQuery = `SITUATION: ${situation}\nROLE: ${role}\nMODE: ${mode}\nCONTEXT: ${context}`;
 
+            let success = false;
+            let generatedText = null;
+
             try {
-                // Simplified one-time API call
+                // Single, direct API call
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -532,30 +569,58 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
                     })
                 });
 
-                if (!response.ok) {
+                if (response.ok) {
+                    const result = await response.json();
+                    generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (generatedText && generatedText.trim()) {
+                        success = true;
+                    } else {
+                        throw new Error("AI returned empty or invalid content.");
+                    }
+                } else {
                     const errorDetails = await response.text();
                     console.error("API Fetch Error Status:", response.status, "Details:", errorDetails);
                     throw new Error(`API call failed with status ${response.status}.`);
                 }
 
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            } catch (error) {
+                // --- FALLBACK MODE ACTIVATED ---
+                console.warn("API failed. Falling back to local scripts.", error.message);
                 
-                if (text && text.trim()) {
-                    // Success: Decrement credit and display results
-                    updateCreditUI(mockCredits - 1);
-                    displayResults(text);
-                    showNotification(`Script generated! ${mockCredits - 1} credits remaining.`, 'success');
+                // Get pre-written script based on selection, or use default if needed
+                generatedText = FALLBACK_SCRIPTS[situation] || FALLBACK_SCRIPTS.default;
+                
+                // Display the fallback alert
+                fallbackAlert.classList.remove('hidden');
+                
+                // Note: We count this as a successful user experience even though it's a fallback.
+                success = true; 
+            }
+
+
+            try {
+                if (success) {
+                    // Decrement credit only if the API call was successful AND NOT a fallback
+                    if (!fallbackAlert.classList.contains('hidden')) {
+                        // Fallback used. Do not decrement credit to encourage user to try personalized service later.
+                        showNotification('Fallback used. Credit NOT deducted.', 'info');
+                    } else {
+                        // API Success: Decrement credit
+                        updateCreditUI(mockCredits - 1);
+                        showNotification(`Script generated! ${mockCredits - 1} credits remaining.`, 'success');
+                    }
+                    
+                    displayResults(generatedText);
+                    
                 } else {
-                    // Content missing or empty from successful API call
-                    console.error("AI returned empty or invalid content:", result);
-                    throw new Error("AI output was empty or malformed.");
+                    // Critical failure even the fallback failed (shouldn't happen)
+                    showNotification('A critical error occurred. Please refresh the page.', 'error');
                 }
 
             } catch (error) {
-                // Failure: Log and notify user, do NOT decrement credit
-                console.error("Script generation failed:", error.message);
-                showNotification('Generation failed. Please try again. Network issue or API limit reached.', 'error');
+                console.error("Script rendering or finalization failed:", error);
+                showNotification('An error occurred while displaying results.', 'error');
             } finally {
                 // Always reset UI elements
                 loadingIndicator.classList.add('hidden');
