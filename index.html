@@ -457,7 +457,7 @@
         function handleBuyScripts() {
              // 1. Get selected pack details
             const selectedInput = document.querySelector('input[name="scriptPack"]:checked');
-            const name = selectedInput.dataset.packName;
+            const name = selectedInput.dataset.pack-name;
             const price = PRICING_TIERS[name][currentCurrency.priceKey];
             const currencyCode = currentCurrency.code;
             
@@ -541,6 +541,8 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
                     });
 
                     if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error(`Attempt ${attempt}: API failed with status ${response.status}. Body: ${errorText}`);
                         throw new Error(`API failed with status ${response.status}`);
                     }
 
@@ -553,10 +555,12 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
                         throw new Error("Received empty or malformed response from AI.");
                     }
                 } catch (error) {
+                    console.error(`Attempt ${attempt} error:`, error.message);
                     if (attempt < maxRetries) {
                         const delay = Math.pow(2, attempt) * 1000;
                         await new Promise(resolve => setTimeout(resolve, delay));
                     } else {
+                        // Throw the final error to be caught by the outer try/catch
                         throw error;
                     }
                 }
@@ -568,18 +572,20 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
                 if(success) {
                     updateCreditUI(mockCredits - 1);
                     displayResults(text);
-                    showNotification(`Script generated! ${mockCredits} credits remaining.`, 'success');
+                    showNotification(`Script generated! ${mockCredits - 1} credits remaining.`, 'success');
                 } else {
-                    throw new Error("Failed to generate content after multiple retries.");
+                    // This should ideally not be reached if the final error is thrown above,
+                    // but exists as a safeguard.
+                    throw new Error("Failed to generate content after maximum retries.");
                 }
 
             } catch (error) {
-                console.error("Script generation error:", error);
-                // We assume credit was already decremented, so we don't restore it here.
-                showNotification('Error generating scripts. Check console for details.', 'error');
+                console.error("Final Script generation error caught:", error);
+                showNotification('Generation failed. Please try again or check the console for API errors.', 'error');
             } finally {
+                // IMPORTANT: This runs regardless of success or failure, resetting the UI
                 loadingIndicator.classList.add('hidden');
-                // Re-enable button state
+                // Re-enable button state (mockCredits will be updated if success was true)
                 updateCreditUI(mockCredits); 
             }
         }
