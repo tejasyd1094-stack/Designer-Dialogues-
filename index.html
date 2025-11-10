@@ -457,7 +457,7 @@
         function handleBuyScripts() {
              // 1. Get selected pack details
             const selectedInput = document.querySelector('input[name="scriptPack"]:checked');
-            const name = selectedInput.dataset.pack-name;
+            const name = selectedInput.dataset.packName;
             const price = PRICING_TIERS[name][currentCurrency.priceKey];
             const currencyCode = currentCurrency.code;
             
@@ -476,13 +476,12 @@
             }, 1000); 
         }
         
-        // --- LLM GENERATION LOGIC ---
+        // --- LLM GENERATION LOGIC (Simplified for reliability) ---
 
         async function handleGenerateScripts(event) {
             event.preventDefault();
             
             if (mockCredits <= 0) {
-                // IMPORTANT: isPurchaseFlow is TRUE
                 showMessageBox(
                     "Unlock Scripts", 
                     "You've used all your **free script credits**. Please choose a script pack below to continue mastering your dialogues.", 
@@ -522,71 +521,45 @@ Ensure all scripts are professional, respectful, and achieve the user's objectiv
 
             const userQuery = `SITUATION: ${situation}\nROLE: ${role}\nMODE: ${mode}\nCONTEXT: ${context}`;
 
-            // Implement exponential backoff for API call
-            const maxRetries = 3;
-            let attempt = 0;
-            let success = false;
-            let text = null;
-
-            while (attempt < maxRetries && !success) {
-                attempt++;
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: userQuery }] }],
-                            systemInstruction: { parts: [{ text: systemPrompt }] },
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error(`Attempt ${attempt}: API failed with status ${response.status}. Body: ${errorText}`);
-                        throw new Error(`API failed with status ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
-                    if (text) {
-                        success = true;
-                    } else {
-                        throw new Error("Received empty or malformed response from AI.");
-                    }
-                } catch (error) {
-                    console.error(`Attempt ${attempt} error:`, error.message);
-                    if (attempt < maxRetries) {
-                        const delay = Math.pow(2, attempt) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    } else {
-                        // Throw the final error to be caught by the outer try/catch
-                        throw error;
-                    }
-                }
-            }
-
-
             try {
-                // Decrement credit (MOCK LOGIC) only if API succeeded
-                if(success) {
+                // Simplified one-time API call
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorDetails = await response.text();
+                    console.error("API Fetch Error Status:", response.status, "Details:", errorDetails);
+                    throw new Error(`API call failed with status ${response.status}.`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text && text.trim()) {
+                    // Success: Decrement credit and display results
                     updateCreditUI(mockCredits - 1);
                     displayResults(text);
                     showNotification(`Script generated! ${mockCredits - 1} credits remaining.`, 'success');
                 } else {
-                    // This should ideally not be reached if the final error is thrown above,
-                    // but exists as a safeguard.
-                    throw new Error("Failed to generate content after maximum retries.");
+                    // Content missing or empty from successful API call
+                    console.error("AI returned empty or invalid content:", result);
+                    throw new Error("AI output was empty or malformed.");
                 }
 
             } catch (error) {
-                console.error("Final Script generation error caught:", error);
-                showNotification('Generation failed. Please try again or check the console for API errors.', 'error');
+                // Failure: Log and notify user, do NOT decrement credit
+                console.error("Script generation failed:", error.message);
+                showNotification('Generation failed. Please try again. Network issue or API limit reached.', 'error');
             } finally {
-                // IMPORTANT: This runs regardless of success or failure, resetting the UI
+                // Always reset UI elements
                 loadingIndicator.classList.add('hidden');
-                // Re-enable button state (mockCredits will be updated if success was true)
-                updateCreditUI(mockCredits); 
+                updateCreditUI(mockCredits); // Resets button state based on mockCredits
             }
         }
 
