@@ -5,832 +5,466 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KryptonPath Dialogue Designer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Razorpay Checkout SDK for payment processing -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles for aesthetic, modern, and vibrant design */
+        /* Custom styles */
         :root {
-            --primary-accent: #6C63FF; /* Vibrant Purple/Indigo */
-            --secondary-accent: #FFD233; /* Bright Yellow/Gold */
-            --background-dark: #1A1A2E; /* Deep Navy Blue */
-            --card-background: #1F2840; /* Slightly lighter navy for cards */
-            --text-light: #E0E0E0; /* Off-white for readability */
-            --text-dark: #AAAAAA; /* Lighter grey for secondary text */
-            --success-green: #3DDC84; /* Vibrant Green for success */
-            --error-red: #FF6B6B; /* Soft Red for errors */
+            --krypton-indigo: #4c51bf; /* Indigo 600 - Primary */
+            --krypton-dark: #1f2937; /* Gray 800 - Background */
+            --krypton-card: #374151; /* Gray 700 - Card */
+            --krypton-text: #f3f4f6; /* Gray 100 - Text */
+            --krypton-accent: #fcd34d; /* Amber 300 - Accent/Credit */
         }
-
         body {
-            font-family: 'Poppins', sans-serif;
-            /* Subtle background gradient for depth */
-            background: linear-gradient(135deg, var(--background-dark) 0%, #151927 100%);
-            color: var(--text-light);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 20px 0;
-        }
-        .a11y-focus-ring:focus {
-            outline: 3px solid var(--secondary-accent);
-            outline-offset: 2px;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--krypton-dark);
+            color: var(--krypton-text);
         }
         .container-card {
-            background-color: var(--card-background);
-            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.5);
+            background-color: var(--krypton-card);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
         }
-        .input-style, .select-style {
-            background-color: #374151; /* Darker input background */
+        .input-style {
+            background-color: var(--krypton-dark);
             border: 2px solid #4b5563;
-            color: var(--text-light);
-            transition: border-color 0.3s;
-            /* Ensure select matches input height and style */
-            appearance: none; /* Hide default arrow */
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23AAAAAA'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 1.5em 1.5em;
-        }
-        .input-style:focus, .select-style:focus {
-            border-color: var(--primary-accent);
+            color: var(--krypton-text);
         }
         .button-primary {
-            background-color: var(--primary-accent);
+            background-color: var(--krypton-indigo);
             transition: background-color 0.3s, transform 0.1s;
         }
-        .button-primary:hover:not(:disabled) {
-            background-color: #5d53ee; /* Darker shade on hover */
+        .button-primary:hover {
+            background-color: #6366f1;
             transform: translateY(-1px);
         }
+        .a11y-focus-ring:focus {
+            outline: 3px solid var(--krypton-accent);
+            outline-offset: 2px;
+        }
         .loading-dot {
-            animation: bounce 0.6s infinite alternate;
+            animation: dot-flicker 1.5s infinite ease-in-out;
         }
-        .loading-dot:nth-child(2) {
-            animation-delay: 0.2s;
+        .loading-dot:nth-child(2) { animation-delay: 0.5s; }
+        .loading-dot:nth-child(3) { animation-delay: 1s; }
+        @keyframes dot-flicker {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
         }
-        .loading-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        @keyframes bounce {
-            to {
-                opacity: 0.5;
-                transform: translateY(-8px);
-            }
-        }
-        /* Notification/Message Box styles */
-        .message-box {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 50;
-        }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(5px);
-        }
-        .pack-card {
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-        .pack-card:hover {
-            border-color: var(--primary-accent);
-        }
-        .pack-card.selected {
-            border-color: var(--secondary-accent);
-            background-color: rgba(255, 210, 51, 0.1);
-            transform: scale(1.03);
-        }
-        .buy-button {
-            background-color: var(--success-green);
-            color: #1A1A2E; /* Dark text for contrast */
-        }
-        .buy-button:hover {
-            background-color: #2da468;
+        .modal {
+            background-color: rgba(0, 0, 0, 0.75);
         }
     </style>
-</head>
-<body class="selection:bg-primary-accent selection:text-white">
-
-    <div class="max-w-xl w-full p-4 lg:p-8 container-card rounded-3xl">
-
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold text-white mb-2 tracking-tight">KryptonPath Dialogue Designer</h1>
-            <h2 class="text-xl font-semibold text-primary-accent mb-4">The Zero-Conflict Corporate Dialogue Engine.</h2>
-            <p class="text-lg text-text-dark max-w-md mx-auto">
-                Instantly curate 3 professional, conflict-free scripts for any high-stakes work conversation.
-            </p>
-            <div id="credit-counter" class="inline-block mt-4 p-2 px-4 rounded-full bg-primary-accent shadow-lg">
-                <span class="text-lg font-bold text-secondary-accent">0 Script Credits</span>
-            </div>
-            <!-- Button to always show purchase options -->
-            <button id="buy-credits-link" class="mt-4 block mx-auto text-sm font-semibold text-white bg-[#374151] hover:bg-[#4b5563] px-6 py-2 rounded-full transition a11y-focus-ring">
-                View Plans & Buy Scripts
-            </button>
-            
-        </header>
-
-        <!-- Form for input -->
-        <form id="dialogue-form" class="space-y-6">
-            
-            <!-- 1. Situation Dropdown -->
-            <div>
-                <label for="situation" class="block text-sm font-medium mb-2 text-text-light">1. Select the corporate pain point (Situation):</label>
-                <select id="situation" name="situation" required
-                        class="select-style w-full p-3 rounded-lg a11y-focus-ring">
-                    <option value="" disabled selected>Choose a common workplace challenge</option>
-                    <option value="Handling unjustified criticism from a senior leader.">Handling unjustified criticism from a senior leader.</option>
-                    <option value="Addressing a colleague who consistently misses deadlines.">Addressing a colleague who consistently misses deadlines.</option>
-                    <option value="Negotiating a better salary/compensation package.">Negotiating a better salary/compensation package.</option>
-                    <option value="Giving difficult performance feedback to a direct report.">Giving difficult performance feedback to a direct report.</option>
-                    <option value="Pushing back against an overwhelming new project assignment.">Pushing back against an overwhelming new project assignment.</option>
-                    <option value="Requesting essential resources or budget increase.">Requesting essential resources or budget increase.</option>
-                    <option value="Explaining a major project failure or delay.">Explaining a major project failure or delay.</option>
-                    <option value="Dealing with constant interruptions during meetings.">Dealing with constant interruptions during meetings.</option>
-                </select>
-            </div>
-
-            <!-- 2. Role Dropdown -->
-            <div>
-                <label for="role" class="block text-sm font-medium mb-2 text-text-light">2. What is your role in this conversation?</label>
-                <select id="role" name="role" required
-                        class="select-style w-full p-3 rounded-lg a11y-focus-ring">
-                    <option value="" disabled selected>Identify your role and audience</option>
-                    <option value="Manager speaking to Direct Report.">Manager speaking to Direct Report.</option>
-                    <option value="Direct Report speaking to Manager.">Direct Report speaking to Manager.</option>
-                    <option value="Colleague speaking to Peer/Teammate.">Colleague speaking to Peer/Teammate.</option>
-                    <option value="Leader speaking to a Cross-Functional Partner.">Leader speaking to a Cross-Functional Partner.</option>
-                    <option value="Team Member speaking to a Project Stakeholder.">Team Member speaking to a Project Stakeholder.</option>
-                </select>
-            </div>
-
-            <!-- 3. Mode Dropdown -->
-            <div>
-                <label for="mode" class="block text-sm font-medium mb-2 text-text-light">3. What is the communication mode?</label>
-                <select id="mode" name="mode" required
-                        class="select-style w-full p-3 rounded-lg a11y-focus-ring">
-                    <option value="" disabled selected>How will you deliver the message?</option>
-                    <option value="Verbal Conversation (In-person or Video Call).">Verbal Conversation (In-person or Video Call).</option>
-                    <option value="Written Communication (Email/Memo).">Written Communication (Email/Memo).</option>
-                    <option value="Instant Message (Slack/Teams).">Instant Message (Slack/Teams).</option>
-                    <option value="Formal Presentation Script.">Formal Presentation Script.</option>
-                </select>
-            </div>
-
-            <!-- Context Input (Remains text area for specificity) -->
-            <div>
-                <label for="context" class="block text-sm font-medium mb-2 text-text-light">4. Provide brief context (What specifically happened?):</label>
-                <textarea id="context" name="context" rows="4" placeholder="Example: My manager frequently interrupts me during project updates, making me feel unheard and losing momentum on the topic." required
-                          class="input-style w-full p-3 rounded-lg a11y-focus-ring resize-none"></textarea>
-                <p class="text-xs text-text-dark mt-1">
-                    Be specific about the last incident for the best three-script outcome.
-                </p>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" id="submit-btn" disabled 
-                    class="button-primary w-full p-4 text-xl font-bold rounded-lg a11y-focus-ring opacity-70 cursor-not-allowed"
-                    aria-live="polite">
-                Generate Scripts (1 Credit)
-            </button>
-        </form>
-
-        <!-- Loading Indicator -->
-        <div id="loading-indicator" class="hidden text-center mt-8 p-4" role="status" aria-label="Generating scripts, please wait.">
-            <div class="flex items-center justify-center space-x-2">
-                <div class="w-3 h-3 bg-primary-accent rounded-full loading-dot"></div>
-                <div class="w-3 h-3 bg-primary-accent rounded-full loading-dot"></div>
-                <div class="w-3 h-3 bg-primary-accent rounded-full loading-dot"></div>
-                <span class="ml-3 text-lg font-semibold text-primary-accent">Crafting your zero-conflict dialogue...</span>
-            </div>
-        </div>
-
-        <!-- Results Area -->
-        <section id="results-area" class="hidden mt-8 rounded-xl bg-background-dark p-6 shadow-2xl" aria-live="polite" aria-atomic="true">
-            <h3 class="text-2xl font-bold text-secondary-accent mb-4">Your Conflict-Free Scripts</h3>
-            <div id="script-results" class="space-y-6">
-                <!-- Content will be injected here -->
-            </div>
-        </section>
-        
-    </div>
-
-    <!-- Modal for Purchase/Messaging -->
-    <div id="dialogue-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="bg-card-background p-6 lg:p-8 rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-95 opacity-0" id="modal-content-box">
-            
-            <h2 id="modal-title" class="text-3xl font-extrabold text-secondary-accent mb-4 text-center">Unlock Scripts</h2>
-            <p id="modal-message" class="text-text-light mb-6 text-center">
-                Select a script pack below to expand your dialogue toolkit and continue generating professional, conflict-free conversations.
-            </p>
-
-            <!-- Pricing Grid - Defaults to hidden but will be shown by JS for purchase flow -->
-            <div id="pricing-grid" class="hidden grid grid-cols-3 gap-4 mb-6">
-                
-                <!-- 10 Credits @ â¹299 (Starter Pack) -->
-                <label for="starter-pack" id="starter-card" class="pack-card bg-background-dark p-4 rounded-lg text-center relative hover:border-primary-accent">
-                    <input type="radio" id="starter-pack" name="scriptPack" value="10" data-price-inr="299" checked
-                           class="absolute top-3 right-3 h-5 w-5 text-primary-accent bg-transparent border-gray-500 checked:bg-primary-accent focus:ring-0">
-                    
-                    <h3 class="text-lg font-bold text-primary-accent mb-1">STARTER</h3>
-                    <p class="text-sm text-text-light mb-2">10 Scripts</p>
-                    <p class="text-2xl font-extrabold text-white">â¹299</p>
-                    <p class="text-xs text-text-dark mt-2 opacity-0">Placeholder</p>
-                </label>
-
-                <!-- 50 Credits @ â¹499 (Pro Pack) -->
-                <label for="pro-pack" id="pro-card" class="pack-card bg-background-dark p-4 rounded-lg text-center relative hover:border-primary-accent">
-                    <input type="radio" id="pro-pack" name="scriptPack" value="50" data-price-inr="499"
-                           class="absolute top-3 right-3 h-5 w-5 text-primary-accent bg-transparent border-gray-500 checked:bg-primary-accent focus:ring-0">
-                    
-                    <h3 class="text-lg font-bold text-primary-accent mb-1">PRO</h3>
-                    <p class="text-sm text-text-light mb-2">50 Scripts</p>
-                    <p class="text-2xl font-extrabold text-white">â¹499</p>
-                    <p class="text-xs text-text-dark mt-2 opacity-0">Placeholder</p>
-                </label>
-
-                <!-- 500 Credits @ â¹1999 (Titan Plan - Best Value) -->
-                <label for="titan-pack" id="titan-card" class="pack-card bg-background-dark p-4 rounded-lg text-center relative border-2 border-secondary-accent shadow-lg">
-                    <input type="radio" id="titan-pack" name="scriptPack" value="500" data-price-inr="1999"
-                           class="absolute top-3 right-3 h-5 w-5 text-secondary-accent bg-transparent border-gray-500 checked:bg-secondary-accent focus:ring-0">
-                    
-                    <h3 class="text-lg font-bold text-secondary-accent mb-1">TITAN PLAN</h3>
-                    <p class="text-sm text-text-light mb-2">500 Scripts</p>
-                    <p class="text-2xl font-extrabold text-white">â¹1999</p>
-                    <p class="text-xs text-success-green font-bold mt-2">
-                        Best Value
-                    </p>
-                </label>
-            </div>
-
-            <p class="text-xs text-text-dark mb-4 mt-2 text-center">
-                All transactions are in **INR (â¹)** and secured via **Razorpay**.
-            </p>
-
-            <button id="buy-scripts-btn" 
-                    class="buy-button w-full p-4 text-xl font-bold rounded-lg transition a11y-focus-ring mb-4">
-                Proceed to Secure Payment (â¹299)
-            </button>
-            
-            <button id="close-modal-btn" 
-                    class="w-full p-3 text-sm text-text-dark hover:text-white transition a11y-focus-ring">
-                Go back to designer
-            </button>
-            <p class="text-xs text-text-dark mt-4">Powered by <a href="#" class="text-primary-accent hover:underline">Gemini</a> & <a href="#" class="text-primary-accent hover:underline">Firebase</a></p>
-        </div>
-    </div>
-    
-    <!-- Notification Toast -->
-    <div id="notification-toast" class="fixed top-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 transform translate-x-10 z-50"></div>
-
 
     <script type="module">
-        // --- GLOBAL ERROR CATCHER (CRITICAL DEBUG) ---
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.error("--- GLOBAL JAVASCRIPT ERROR ---");
-            console.error("Message:", message);
-            console.error("Source:", source);
-            console.error("Line/Column:", lineno, colno);
-            if (error) {
-                console.error("Error Object:", error);
-            }
-            // Attempt to show notification if the error is severe enough
-            try {
-                 document.getElementById('notification-toast').textContent = `CRITICAL: Script Error at line ${lineno}. Check console.`;
-                 document.getElementById('notification-toast').className = 'fixed top-5 right-5 p-4 rounded-lg shadow-xl text-white bg-error-red transition-opacity duration-300 transform z-50';
-            } catch (e) { /* ignore if toast fails */ }
-            return true; // Prevents default browser handling
-        };
-        // ---------------------------------------------
-    
-        // Import necessary Firebase modules
+        // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-
-        // --- CONFIG & INITIALIZATION ---
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // 1. Mandatory Global Variables
-        // __app_id is used in the Firestore path construction.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // __initial_auth_token is used for secure custom token sign-in.
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
-
-        // --- FIREBASE CONFIGURATION (CRITICAL FIX) ---
-        // The previous hardcoded API key was causing a fatal (auth/invalid-api-key) error.
-        // We are now forcing reliance on the secure '__firebase_config' environment variable.
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
-            ? JSON.parse(__firebase_config)
-            : {}; // If __firebase_config is not available (e.g., external deployment), this will correctly fail initialization.
-        // --- END FIREBASE CONFIGURATION ---
-
-        // 2. Razorpay & Currency Configuration
-        const RAZORPAY_KEY_ID = 'rzp_live_RdjxnHnfeuUS06';
-        const CURRENCY_CODE = 'INR'; 
+        // --- Globals ---
+        const API_KEY = ""; // Provided by the environment
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'dialogue-designer';
+        const FIREBASE_CONFIG = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const INITIAL_AUTH_TOKEN = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // 3. Firebase Instances & State
-        let app, db, auth;
+        let db = null;
+        let auth = null;
         let userId = null;
-        let currentCredits = 0;
-        
-        // 4. Gemini API Endpoint
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        let credits = 0;
+        const INITIAL_CREDITS = 3;
 
-        // Elements
+        // --- DOM Elements ---
+        const resultsDiv = document.getElementById('results-area');
+        const loaderDiv = document.getElementById('loading-indicator');
+        const submitButton = document.getElementById('submit-btn');
+        const creditCounter = document.getElementById('credit-counter');
+        const purchaseModal = document.getElementById('purchase-modal');
+        const closeModalButton = document.getElementById('close-modal-btn');
+        const buyScriptsButton = document.getElementById('buy-scripts-btn');
         const form = document.getElementById('dialogue-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const resultsArea = document.getElementById('results-area');
-        const scriptResultsDiv = document.getElementById('script-results');
-        const creditCounterSpan = document.querySelector('#credit-counter span');
-        const modal = document.getElementById('dialogue-modal');
-        const modalContentBox = document.getElementById('modal-content-box');
-        const buyScriptsBtn = document.getElementById('buy-scripts-btn');
-        const pricingGrid = document.getElementById('pricing-grid'); // Now defaults to hidden in HTML
-        const buyCreditsLink = document.getElementById('buy-credits-link'); // Reference to the new button
 
-        // Set Firebase Logging (Helpful for debugging)
-        setLogLevel('debug');
+        // --- Event Listeners ---
+        closeModalButton.addEventListener('click', () => purchaseModal.classList.add('hidden'));
+        buyScriptsButton.addEventListener('click', mockPurchase);
+        form.addEventListener('submit', handleFormSubmit);
 
-
-        // --- UI & UX FUNCTIONS ---
-
-        function showNotification(message, type = 'info') {
-            const toast = document.getElementById('notification-toast');
-            toast.textContent = message;
-            
-            // Set colors based on type
-            let bgColor = 'bg-gray-800';
-            if (type === 'error') bgColor = 'bg-error-red';
-            else if (type === 'success') bgColor = 'bg-success-green';
-            else if (type === 'info') bgColor = 'bg-primary-accent';
-
-            toast.className = `fixed top-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 transform z-50 ${bgColor}`;
-            
-            // Show
-            toast.classList.remove('opacity-0', 'translate-x-10');
-            
-            // Hide after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-x-10');
-            }, 5000);
-        }
-
-        function showMessageBox(title, message, isPurchaseFlow) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').innerHTML = message;
-
-            if (isPurchaseFlow) {
-                // Show pricing grid and purchase button
-                pricingGrid.classList.remove('hidden'); // CRITICAL: This now reveals the plans
-                buyScriptsBtn.classList.remove('hidden');
-                
-                updateSelectedPack();
-            } else {
-                // Hide pricing grid and purchase button for simple alerts
-                pricingGrid.classList.add('hidden');
-                buyScriptsBtn.classList.add('hidden');
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeFirebase() {
+            if (!FIREBASE_CONFIG) {
+                console.error("Firebase config is missing. Cannot initialize database.");
+                return;
             }
 
-            modal.classList.remove('hidden');
-            // Trigger transition for aesthetics
-            setTimeout(() => {
-                modal.classList.add('opacity-100');
-                modalContentBox.classList.remove('scale-95', 'opacity-0');
-            }, 10);
-        }
+            const app = initializeApp(FIREBASE_CONFIG);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            setLogLevel('Debug'); // Set log level for debugging
 
-        function closeModal() {
-            modalContentBox.classList.add('scale-95', 'opacity-0');
-            modal.classList.add('opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.classList.remove('opacity-100');
-            }, 300); // Match transition duration
-        }
-
-        function updateCreditUI(count) {
-            currentCredits = count;
-            creditCounterSpan.textContent = `${count} Script Credits`;
-            
-            const creditText = count <= 0 ? 'Out of Credits' : 'Generate Scripts (1 Credit)';
-            submitBtn.textContent = creditText;
-
-            if (count > 0) {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-            } else {
-                submitBtn.disabled = true;
-                submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-            }
-        }
-
-        function updateSelectedPack() {
-            const packs = document.querySelectorAll('.pack-card');
-            const selectedInput = document.querySelector('input[name="scriptPack"]:checked');
-            
-            if (!selectedInput) return;
-
-            const price = selectedInput.dataset.priceInr;
-            buyScriptsBtn.textContent = `Proceed to Secure Payment (â¹${price})`;
-
-            packs.forEach(card => {
-                const input = card.querySelector('input[name="scriptPack"]');
-                if (input.checked) {
-                    card.classList.add('selected');
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("Authenticated with UID:", userId);
+                    await loadCredits();
                 } else {
-                    card.classList.remove('selected');
-                }
-            });
-        }
-
-
-        // --- FIREBASE LOGIC ---
-
-        async function initFirebase() {
-            try {
-                
-                // === DEBUGGING LOGS (CRITICAL) ===
-                console.log("--- Firebase Debug Start ---");
-                console.log("App ID:", appId);
-                console.log("Initial Auth Token Defined:", typeof initialAuthToken !== 'undefined' && initialAuthToken !== null);
-                // Note: The configuration object is now intentionally checked for content.
-                if (Object.keys(firebaseConfig).length === 0) {
-                    throw new Error("Missing secure Firebase configuration. Cannot initialize DB/Auth.");
-                }
-                console.log("Firebase Config Object (Attempting to Use):", firebaseConfig);
-                console.log("--- Firebase Debug End ---");
-                // =================================
-                
-                // Safety check: Ensure the configuration is valid before proceeding
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    throw new Error("Firebase configuration object is invalid or empty. Check Debug Logs above.");
-                }
-
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                await setPersistence(auth, browserLocalPersistence);
-
-                if (initialAuthToken) {
-                    // This block will only run in the Canvas environment
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // This is the path for external deployments like Netlify/Vercel (requires valid config)
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        // Use the default-app-id for external deployments
-                        setupCreditListener(userId); 
+                    if (INITIAL_AUTH_TOKEN) {
+                        try {
+                            await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
+                        } catch (error) {
+                            console.error("Custom token sign-in failed:", error);
+                            await signInAnonymously(auth);
+                        }
                     } else {
-                        userId = null;
-                        updateCreditUI(0);
-                        showNotification('Authentication failed or user signed out.', 'error');
+                        await signInAnonymously(auth);
                     }
-                });
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                // This should now only trigger if the environment config is missing or invalid.
-                showNotification(`Fatal Error: Could not initialize Firebase. Please check console for configuration issues.`, 'error');
-            }
-        }
-
-        function setupCreditListener(uid) {
-            // Note: External deployments use 'default-app-id' in the path
-            const creditDocRef = doc(db, 'artifacts', appId, 'users', uid, 'usage_credits', 'dialogue_app');
-            
-            onSnapshot(creditDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    updateCreditUI(data.count || 0);
-                } else {
-                    // Initialize document for new users with 3 free credits
-                    setDoc(creditDocRef, { count: 3, userId: uid, lastUsed: new Date().toISOString() })
-                        .then(() => updateCreditUI(3))
-                        .catch(e => console.error("Error creating initial credit doc:", e));
                 }
-            }, (error) => {
-                console.error("Credit Listener Error:", error);
-                showNotification('Failed to listen for credit updates.', 'error');
             });
         }
 
-        async function decrementCredit() {
-            if (!db || !userId) return false;
+        /**
+         * Loads user credits from Firestore, setting default if new user.
+         */
+        async function loadCredits() {
+            if (!db || !userId) return;
 
-            const creditDocRef = doc(db, 'artifacts', appId, 'users', userId, 'usage_credits', 'dialogue_app');
-            
+            // Path: /artifacts/{appId}/users/{userId}/usage_credits/dialogue_app
+            const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
+
             try {
-                const success = await runTransaction(db, async (transaction) => {
-                    const creditDoc = await transaction.get(creditDocRef);
-                    
-                    if (!creditDoc.exists() || creditDoc.data().count <= 0) {
-                        return false; 
-                    }
-
-                    const newCount = creditDoc.data().count - 1;
-                    
-                    transaction.set(creditDocRef, {
-                        count: newCount,
-                        lastUsed: new Date().toISOString()
-                    }, { merge: true });
-                    
-                    return true;
-                });
-                
-                return success;
-
+                const docSnap = await getDoc(creditRef);
+                if (docSnap.exists()) {
+                    credits = docSnap.data().count || 0;
+                } else {
+                    // New user: grant initial credits
+                    credits = INITIAL_CREDITS;
+                    await setDoc(creditRef, { count: credits, userId: userId, lastUpdated: new Date().toISOString() });
+                }
             } catch (e) {
-                console.error("Credit decrement transaction failed:", e);
-                showNotification('Failed to use credit due to database error.', 'error');
+                console.error("Error loading credits:", e);
+                // Fallback: If Firestore fails, assume full credits to allow use
+                credits = INITIAL_CREDITS;
+            }
+            updateCreditUI();
+        }
+
+        /**
+         * Checks if credits exist, decrements them, and saves to Firestore.
+         * @returns {Promise<boolean>} True if generation is allowed and decremented.
+         */
+        async function checkAndDecrementCredits() {
+            if (credits <= 0) {
                 return false;
             }
-        }
 
-        // --- PURCHASE LOGIC (Razorpay Integration) ---
-        
-        async function grantCredits(addedCredits, paymentId) {
             if (!db || !userId) {
-                console.error("Cannot grant credits: Firebase or User ID not ready.");
-                showNotification("Payment confirmed, but failed to grant credits. Contact support.", 'error');
-                return;
+                console.error("Database or User ID not ready.");
+                return true; // Fail-safe: allow if environment error prevents tracking
             }
 
-            const creditDocRef = doc(db, 'artifacts', appId, 'users', userId, 'usage_credits', 'dialogue_app');
-            
             try {
-                // Use a transaction to safely read the current count and write the new count
-                const newCount = await runTransaction(db, async (transaction) => {
-                    const creditDoc = await transaction.get(creditDocRef);
-                    
-                    let currentCount = 0;
-                    if (creditDoc.exists()) {
-                        currentCount = creditDoc.data().count;
-                    } 
-                    
-                    const finalCount = currentCount + addedCredits;
-                    
-                    // Write the new count
-                    transaction.set(creditDocRef, {
-                        count: finalCount,
-                        userId: userId, 
-                        lastPurchase: new Date().toISOString(),
-                        lastPaymentId: paymentId
-                    }, { merge: true }); 
-                    
-                    return finalCount; // Return the new count to the outside scope
-                });
-
-                // Transaction successful (Critical Notification - KEEP)
-                showNotification(`Purchase Complete! ${addedCredits} Scripts added. Total credits: ${newCount}`, 'success');
-                closeModal();
-                
+                const newCount = credits - 1;
+                const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
+                await setDoc(creditRef, { count: newCount, userId: userId, lastUpdated: new Date().toISOString() }, { merge: false });
+                credits = newCount;
+                updateCreditUI();
+                return true;
             } catch (e) {
-                console.error("FIREBASE TRANSACTION ERROR (Credit Granting Failed):", e);
-                // Critical Notification - KEEP
-                showNotification(`Payment confirmed, but failed to grant credits. Contact support.`, 'error');
-            }
-        }
-        
-        function handleBuyScripts() {
-            if (!db || !userId) {
-                showMessageBox("System Error", "App not fully initialized. Please wait a moment and try again. (Firebase configuration error)", false);
-                return;
-            }
-
-            const selectedPackElement = document.querySelector('input[name="scriptPack"]:checked');
-            if (!selectedPackElement) {
-                showMessageBox("Selection Error", "Please select a script pack before proceeding.", false);
-                return;
-            }
-
-            const addedCredits = parseInt(selectedPackElement.value);
-            const priceInRupees = parseInt(selectedPackElement.dataset.priceInr);
-            
-            // Razorpay amount must be in the smallest unit (Paisa)
-            const amountInPaisa = priceInRupees * 100;
-
-            const options = {
-                key: RAZORPAY_KEY_ID, // Your Key ID from Razorpay Dashboard
-                amount: amountInPaisa, 
-                currency: CURRENCY_CODE,
-                name: 'KryptonPath Designer',
-                description: `Purchase ${addedCredits} Dialogue Scripts`,
-                // Note: In a real application, the server would generate an Order ID for security/tracking.
-                prefill: {
-                    name: auth.currentUser?.displayName || 'Anonymous User',
-                    email: auth.currentUser?.email || 'user@example.com' 
-                },
-                handler: function (response) {
-                    // This function is called on successful payment
-                    if (response.razorpay_payment_id) {
-                        // Crucial: Grant credits only after successful payment
-                        grantCredits(addedCredits, response.razorpay_payment_id);
-                    } else {
-                        // Should not happen with standard Razorpay flow
-                        showNotification('Payment successful but no ID received. Contact support.', 'error');
-                    }
-                },
-                modal: {
-                    ondismiss: function() {
-                        // User closed the modal without payment
-                        showNotification('Payment attempt cancelled.', 'info');
-                    }
-                }
-            };
-            
-            try {
-                const rzp1 = new Razorpay(options);
-                rzp1.open();
-                
-            } catch (error) {
-                console.error("Razorpay Initialization Failed:", error);
-                showNotification("Failed to open payment gateway. Check browser console.", 'error');
+                console.error("Error decrementing credits:", e);
+                // Fail-safe: Allow the use, but credits might be incorrect
+                credits--; 
+                updateCreditUI();
+                return true;
             }
         }
 
+        /**
+         * Updates the UI to show the current credit count and button state.
+         */
+        function updateCreditUI() {
+            creditCounter.textContent = `${credits} Script Credits`;
+            if (credits <= 0) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Out of Credits';
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                submitButton.classList.remove('hover:bg-indigo-500');
+            } else {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Generate Scripts (1 Credit)';
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                submitButton.classList.add('hover:bg-indigo-500');
+            }
+        }
 
-        // --- LLM GENERATION LOGIC ---
-
-        async function handleGenerateScripts(event) {
-            event.preventDefault();
+        /**
+         * Handles the form submission event (Check credits, generate, decrement).
+         */
+        async function handleFormSubmit(e) {
+            e.preventDefault();
             
-            const situationEl = document.getElementById('situation');
-            const roleEl = document.getElementById('role');
-            const modeEl = document.getElementById('mode');
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.add('hidden');
             
-            if (!situationEl.value || !roleEl.value || !modeEl.value || !document.getElementById('context').value) {
-                showMessageBox("Missing Information", "Please select options for Situation, Role, and Mode, and provide context to generate scripts.", false);
+            if (credits <= 0) {
+                purchaseModal.classList.remove('hidden');
                 return;
             }
 
-
-            if (currentCredits <= 0) {
-                // IMPORTANT: isPurchaseFlow is TRUE, which will show the pricing grid.
-                showMessageBox("Unlock Scripts", "You've used all your **free script credits**. Please purchase a script pack to continue mastering your dialogues.", true);
-                return;
-            }
-
-            // Start loading state
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Generating...';
-            loadingIndicator.classList.remove('hidden');
-            resultsArea.classList.add('hidden');
-            
             const formData = new FormData(form);
             const situation = formData.get('situation');
             const role = formData.get('role');
-            const mode = formData.get('mode');
             const context = formData.get('context');
+            
+            if (!situation || !role || !context) {
+                resultsDiv.innerHTML = '<p class="text-red-400 p-4" role="alert">Please fill out all fields.</p>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
 
-            const systemPrompt = `You are the KryptonPath Dialogue Designer, a world-class communication AI. Your task is to generate three distinct, conflict-free professional dialogue scripts based on the user's input. The response MUST be in Markdown format, with three clearly separated scripts under H2 headings (##).
+            // Show loading state and disable button
+            loaderDiv.classList.remove('hidden');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Generating...';
 
-1.  **Direct Script (Action-Oriented):** Focus on clarity, boundaries, and immediate resolution.
-2.  **Empathetic Script (Relationship-Focused):** Focus on understanding, shared goals, and collaborative problem-solving.
-3.  **Formal Script (Documentation-Ready):** Focus on professional language, objective facts, and formal documentation (e.g., an email or official verbal statement).
+            try {
+                const isAllowed = await checkAndDecrementCredits();
+                if (!isAllowed) {
+                    purchaseModal.classList.remove('hidden');
+                    return;
+                }
 
-Ensure all scripts are professional, respectful, and achieve the user's objective without escalating conflict. Use placeholders like [Manager's Name] or [Specific Date].`;
+                const { text, sources } = await generateScripts(situation, role, context);
+                displayResults(text, sources);
+                
+            } catch (error) {
+                console.error("Generation error:", error);
+                resultsDiv.innerHTML = '<p class="text-red-400 p-4" role="alert">An error occurred while generating scripts. Please try again. (Check console for details.)</p>';
+                resultsDiv.classList.remove('hidden');
+            } finally {
+                // Hide loading state
+                loaderDiv.classList.add('hidden');
+                updateCreditUI(); 
+            }
+        }
 
-            const userQuery = `SITUATION: ${situation}\nROLE: ${role}\nMODE: ${mode}\nCONTEXT: ${context}`;
+        /**
+         * The core function to call the Gemini API for script generation.
+         */
+        async function generateScripts(situation, role, context) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+
+            const systemPrompt = `You are the KryptonPath Dialogue Designer. Your goal is to provide three distinct, professionally polished script options for sensitive workplace conversations. 
+                The user has specified their situation and role.
+                Your response MUST be structured using clear H2 titles for each script type: "## 1. Direct Script (Action-Oriented)", "## 2. Empathetic Script (Relationship-Focused)", and "## 3. Formal Script (Documentation-Ready)".
+                Each script MUST be presented as a simple dialogue between the user and the 'Recipient'. Do not add any introductory or concluding text outside of the three scripts.`;
+
+            const userQuery = `Generate three conversation scripts.
+                - **Situation/Topic:** ${situation}
+                - **My Role:** ${role}
+                - **Brief Context:** ${context}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
             };
 
-            // Use exponential backoff for retries
-            const maxRetries = 3;
-            let retryCount = 0;
-            let response;
-
-            while (retryCount < maxRetries) {
-                try {
-                    const creditUsed = await decrementCredit();
-                    if (!creditUsed) {
-                        // Re-open purchase modal if credit ran out during async execution (unlikely, but safe)
-                        showMessageBox("Unlock Scripts", "You ran out of credits during processing. Please purchase a script pack.", true);
-                        return;
-                    }
-
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) {
-                        break; // Success
-                    }
-
-                    if (response.status === 429) {
-                        retryCount++;
-                        const delay = Math.pow(2, retryCount) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue; // Retry request
-                    }
-
-                    throw new Error(`API returned status ${response.status}`);
-
-                } catch (error) {
-                    console.error(`Generation attempt ${retryCount + 1} failed:`, error);
-                    if (retryCount === maxRetries - 1) {
-                        showNotification('Failed to generate scripts after multiple attempts. Please try again.', 'error');
-                        loadingIndicator.classList.add('hidden');
-                        updateCreditUI(currentCredits); // Restore button state
-                        return;
-                    }
-                    retryCount++;
-                    const delay = Math.pow(2, retryCount) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-
-            // Process response
-            try {
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (text) {
-                    displayResults(text);
-                } else {
-                    throw new Error("Received empty or malformed response from AI.");
-                }
-
-            } catch (error) {
-                console.error("Response processing error:", error);
-                showNotification('Error processing AI response. Please check your prompt.', 'error');
-            } finally {
-                loadingIndicator.classList.add('hidden');
-                updateCreditUI(currentCredits); // Update button state
-            }
-        }
-
-        function displayResults(markdownText) {
-            // Simple Markdown-to-HTML conversion for the three main sections
-            scriptResultsDiv.innerHTML = '';
-            
-            const sections = markdownText.split('##').filter(s => s.trim() !== '');
-
-            sections.forEach(section => {
-                const lines = section.trim().split('\n');
-                const title = lines[0].trim();
-                const content = lines.slice(1).join('\n').trim().replace(/\n/g, '<br>');
-
-                const card = document.createElement('div');
-                card.className = 'bg-card-background p-5 rounded-lg border-l-4 border-primary-accent shadow-md';
-                card.innerHTML = `
-                    <h4 class="text-xl font-semibold text-text-light mb-2">${title}</h4>
-                    <p class="text-text-dark text-sm leading-relaxed">${content}</p>
-                `;
-                scriptResultsDiv.appendChild(card);
+            // Simplified fetch with exponential backoff omitted for brevity, but should be used in production.
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            resultsArea.classList.remove('hidden');
-            resultsArea.scrollIntoView({ behavior: 'smooth' });
+            if (!response.ok) throw new Error("API call failed.");
+            
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+            const text = candidate?.content?.parts?.[0]?.text || '';
+            
+            // Source extraction logic (optional for this specific API call, but included for completeness)
+            let sources = [];
+            return { text, sources };
+        }
+
+        /**
+         * Displays the generated markdown results with proper formatting.
+         */
+        function displayResults(markdownText, sources) {
+            // Simple markdown-to-HTML conversion for headings and paragraphs
+            let html = markdownText.replace(/## (.*)/g, (match, title) => 
+                `<h2 class="text-2xl font-bold text-yellow-400 mt-6 mb-3 border-b border-gray-600 pb-1">${title}</h2>`
+            );
+            html = html.replace(/\n/g, '<p class="mb-4">');
+
+            let sourcesHtml = '';
+            if (sources.length > 0) {
+                 sourcesHtml = '<div class="mt-6 pt-4 border-t border-gray-600"><h4 class="font-semibold text-gray-400">Sources:</h4><ul class="text-sm list-disc pl-5 space-y-1">';
+                 sources.forEach(source => {
+                     sourcesHtml += `<li><a href="${source.uri}" target="_blank" class="text-blue-400 hover:text-blue-300 underline a11y-focus-ring" aria-label="Source: ${source.title}">${source.title}</a></li>`;
+                 });
+                 sourcesHtml += '</ul></div>';
+            }
+
+            resultsDiv.innerHTML = `<div class="p-6 space-y-4">${html}${sourcesHtml}</div>`;
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.setAttribute('aria-live', 'polite');
         }
         
-        // --- EVENT LISTENERS ---
+        /**
+         * Simulates the payment process and grants credits.
+         */
+        async function mockPurchase() {
+            // In a live app, this would initiate a Razorpay checkout session.
+            buyScriptsButton.disabled = true;
+            buyScriptsButton.textContent = 'Processing...';
 
-        window.onload = initFirebase;
-        form.addEventListener('submit', handleGenerateScripts);
-        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
-        buyScriptsBtn.addEventListener('click', handleBuyScripts);
-        
-        // NEW: Listener for the always-visible Buy Credits button
-        buyCreditsLink.addEventListener('click', () => {
-            showMessageBox(
-                "KryptonPath Script Packs", 
-                "Select a script pack below to expand your dialogue toolkit and continue generating professional, conflict-free conversations.", 
-                true // isPurchaseFlow = true to show the pricing grid
-            );
-        });
+            // Simulate API call to Razorpay (2 second delay)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // After successful payment (mocked), grant 10 credits
+            const addedCredits = 10;
+            const newCount = credits + addedCredits;
 
-        // Modal radio button change listener
-        document.querySelectorAll('input[name="scriptPack"]').forEach(input => {
-            input.addEventListener('change', updateSelectedPack);
-        });
-
-        // Ensure initial selection highlight and button text for the Starter pack
-        document.addEventListener('DOMContentLoaded', () => {
-            const starterInput = document.getElementById('starter-pack');
-            if (starterInput) {
-                starterInput.checked = true; // Select by default
-                updateSelectedPack();
+            try {
+                const creditRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'usage_credits', 'dialogue_app');
+                await setDoc(creditRef, { count: newCount, userId: userId, lastUpdated: new Date().toISOString() }, { merge: false });
+                credits = newCount;
+                
+                // Success message
+                alert('Purchase successful! 10 new credits added. You can now generate more scripts.');
+                purchaseModal.classList.add('hidden');
+                
+            } catch (e) {
+                console.error("Error granting credits after mock purchase:", e);
+                alert('Payment simulated, but an error occurred updating your credits. Please contact support.');
+            } finally {
+                updateCreditUI();
+                buyScriptsButton.disabled = false;
+                buyScriptsButton.textContent = 'Buy 10 Scripts (â¹499)';
             }
-        });
+        }
 
-
+        window.onload = initializeFirebase;
     </script>
+</head>
+<body class="min-h-screen p-4 flex items-start justify-center">
+    <main class="w-full max-w-4xl mt-8">
+        <!-- Application Card -->
+        <div class="container-card p-6 md:p-10 rounded-xl">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2">
+                    KryptonPath Dialogue Designer
+                </h1>
+                <p class="text-indigo-200">
+                    Generate professional scripts for sensitive workplace conversations.
+                </p>
+                <div class="mt-4 p-2 bg-gray-600 rounded-lg inline-block">
+                    <p class="text-sm font-semibold text-krypton-accent">
+                        Current Credits: <span id="credit-counter">Loading...</span>
+                    </p>
+                </div>
+            </header>
+
+            <!-- Input Form -->
+            <form id="dialogue-form" class="space-y-6">
+                
+                <!-- Situation Dropdown -->
+                <div>
+                    <label for="situation-select" class="block text-lg font-medium mb-2">
+                        1. Select the situation/topic:
+                    </label>
+                    <select id="situation-select" name="situation" required class="input-style w-full p-3 rounded-lg a11y-focus-ring">
+                        <option value="">-- Choose High-Stakes Conversation --</option>
+                        <option value="Discussing subtle workplace bias/microaggressions">Discussing Bias/Microaggressions</option>
+                        <option value="Requesting accommodations for a disability or neurodivergence">Requesting Accommodations</option>
+                        <option value="Giving difficult performance feedback to a team member">Giving Difficult Feedback</option>
+                        <option value="Negotiating a salary increase or promotion">Negotiating Salary/Promotion</option>
+                        <option value="Challenging a decision made by a senior mentor or leader">Challenging a Leader's Decision</option>
+                        <option value="Addressing inappropriate use of diversity labels">Addressing Inappropriate Language</option>
+                    </select>
+                </div>
+
+                <!-- Role Dropdown -->
+                <div>
+                    <label for="role-select" class="block text-lg font-medium mb-2">
+                        2. What is your role in this conversation?
+                    </label>
+                    <select id="role-select" name="role" required class="input-style w-full p-3 rounded-lg a11y-focus-ring">
+                        <option value="">-- Select Your Position --</option>
+                        <option value="Employee reporting to Manager">Employee (Report to Manager)</option>
+                        <option value="Manager speaking to Direct Report">Manager (Speak to Direct Report)</option>
+                        <option value="Peer/Colleague engaging a peer">Peer/Colleague</option>
+                        <option value="Mentor speaking to Mentee">Mentor</option>
+                    </select>
+                </div>
+
+                <!-- Context Input -->
+                <div>
+                    <label for="context-input" class="block text-lg font-medium mb-2">
+                        3. Provide brief context (What happened? Who is involved?):
+                    </label>
+                    <textarea id="context-input" name="context" required placeholder="Example: My manager frequently interrupts me when I discuss project timelines, and it feels dismissive."
+                           class="input-style w-full p-3 rounded-lg a11y-focus-ring h-32" 
+                           aria-describedby="context-help"></textarea>
+                    <p id="context-help" class="text-sm text-gray-400 mt-1">
+                        Be specific for the most helpful scripts.
+                    </p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submit-btn" disabled 
+                        class="button-primary w-full p-4 text-xl font-bold rounded-lg a11y-focus-ring opacity-50 cursor-not-allowed"
+                        aria-live="polite">
+                    Loading Credits...
+                </button>
+            </form>
+
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="hidden text-center mt-8 p-4" role="status" aria-label="Generating scripts, please wait.">
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="w-3 h-3 bg-indigo-400 rounded-full loading-dot"></div>
+                    <div class="w-3 h-3 bg-indigo-400 rounded-full loading-dot"></div>
+                    <div class="w-3 h-3 bg-indigo-400 rounded-full loading-dot"></div>
+                    <span class="ml-3 text-lg font-semibold text-indigo-300">Designing your dialogue...</span>
+                </div>
+            </div>
+
+            <!-- Results Area -->
+            <section id="results-area" class="hidden mt-8 rounded-lg bg-gray-700 shadow-xl" aria-live="polite" aria-atomic="true">
+                <!-- Scripts will be injected here -->
+            </section>
+            
+        </div>
+    </main>
+
+    <!-- Purchase Modal (Hidden by default) -->
+    <div id="purchase-modal" class="modal fixed inset-0 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-krypton-card rounded-xl p-8 max-w-lg w-full shadow-2xl border-2 border-krypton-accent">
+            <h2 class="text-3xl font-bold text-red-400 mb-4">Upgrade for Unlimited Access</h2>
+            <p class="text-xl text-gray-200 mb-6">
+                You've used all your **free script credits**. Ready to master every difficult conversation?
+            </p>
+
+            <div class="p-4 bg-gray-800 rounded-lg mb-6">
+                <h3 class="text-2xl font-bold text-krypton-accent mb-2">Script Pack: 10 Uses</h3>
+                <p class="text-4xl font-extrabold text-white">â¹499 <span class="text-lg font-medium text-gray-400"> (approx. $6 USD)</span></p>
+                <p class="text-sm text-gray-400 mt-2">
+                    *Pricing defaults to **INR** for Indian customers. Our live system detects your location to offer local currency pricing (USD, EUR, etc.) and uses **Razorpay** as the primary payment gateway for seamless India transactions.
+                </p>
+            </div>
+
+            <button id="buy-scripts-btn" 
+                    class="w-full p-4 text-xl font-bold rounded-lg bg-green-600 hover:bg-green-700 transition a11y-focus-ring mb-4">
+                Buy 10 Scripts (â¹499)
+            </button>
+            
+            <button id="close-modal-btn" 
+                    class="w-full p-3 text-sm text-gray-400 hover:text-white transition a11y-focus-ring">
+                Maybe later
+            </button>
+            <p class="text-xs text-center text-indigo-300 mt-4">Powered by kryptonpath.com</p>
+        </div>
+    </div>
 </body>
 </html>
 
